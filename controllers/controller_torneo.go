@@ -5,16 +5,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-
-	"github.com/astaxie/beego/orm"
 	"github.com/beego/beego/v2/server/web"
 )
-
-type ReglamentoController struct{
+//@Title Enviar Torneo
+//@Description Formulario para la creacion de torneo para el usuario
+//@param boby body models.CrearTorneo true "Torneo guardado para la creacion"
+//@Success 200 {object} map[string]interface{} "torneo creado"
+//@Failure 400 {object} map[string]interface{} "solicitud invalidad"
+//@Failure 500 {object} map[string]interface{} "Error Interno"
+//@ROUTER /api/torneo [post]
+type TorneoController struct{
 	web.Controller 
 }
 
-func (c *ReglamentoController)CrearTorneos(){
+func (c *TorneoController)CrearTorneos(){
 	body:=c.Ctx.Input.RequestBody
 
 	if len(body)==0{
@@ -60,7 +64,7 @@ func (c *ReglamentoController)CrearTorneos(){
 		return
 	}
 
-	if torneo.CantidadEquipos==0{
+	if torneo.CantidadEquipos<1{
 		c.Data["json"]=map[string]interface{}{
 			"ok":false,
 			"Mensaje":"La cantidad de equipos no puede ser 0",
@@ -70,7 +74,7 @@ func (c *ReglamentoController)CrearTorneos(){
 		return
 	}
 	
-	if len(torneo.PremiacionPuesto)<1{
+	if len(torneo.Premiaciones)<1{
 		c.Data["json"]=map[string]interface{}{
 			"ok":false,
 			"Mensaje":"La premiacion tiene que tener minimo una premiacion",
@@ -80,7 +84,7 @@ func (c *ReglamentoController)CrearTorneos(){
 		return
 	}
 
-	if torneo.IDDeporte == nil{
+	if len(torneo.Tipo_Deporte)!=1{
 				c.Data["json"]=map[string]interface{}{
 			"ok":false,
 			"Mensaje":"el tipo de deporte es obligatorio",
@@ -90,26 +94,30 @@ func (c *ReglamentoController)CrearTorneos(){
 		return
 	}
 
-	o:=orm.NewOrm()
 
-	Tipodeporte:= models.TipoDeporte{}
-
-
-	err = o.QueryTable("TipoDeporte").
-		Filter("IDdeporte",torneo.IDDeporte.IDDeporte).
-		One(&Tipodeporte)
-
-	if err !=nil{
-		c.Data["json"]=map[string]interface{}{
+	if len(torneo.Divicion)!=1{
+	c.Data["json"]=map[string]interface{}{
 			"ok":false,
-			"Mensaje":"el tipo de deporte no existe",
+			"Mensaje":"debe seleccionar una divicion para el torneo ",
 		}
 		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadRequest)
 		c.ServeJSON()
 		return
 	}
+	
 
-	
-	
+	for _, imagen := range torneo.ImagenUrl {
+    if strings.TrimSpace(imagen.Imagen) == "" {
+        c.Data["json"] = map[string]interface{}{
+            "ok": false,
+            "Mensaje": "La URL de la imagen no puede estar vacía",
+        }
+        c.Ctx.ResponseWriter.WriteHeader(http.StatusBadRequest)
+        c.ServeJSON()
+        return
+    }
+}
+
+
 }
 
