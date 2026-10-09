@@ -144,11 +144,6 @@ func (c *Encuentro_midController) GetOne() {
 		return
 	}
 
-	fmt.Println("========== GET ONE ==========")
-	fmt.Println("URL:", urlEncuentro)
-	fmt.Println("BODY:", string(bodyEncuentro))
-	fmt.Println("TIPO: RespuestaEncuentro")
-
 	encuentro := respuesta.Data
 
 	encuentroCmp := Encuentro{
