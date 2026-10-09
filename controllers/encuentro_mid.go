@@ -40,6 +40,17 @@ type RespuestaEncuentros struct {
 	Succes  bool        `json:"succes"`
 }
 
+type Equipos struct {
+	Id int `json:"Id"`
+	NombreEquipo string `json:"NombreEquipo"`
+	Categoría string `json:"Categoria"`
+	CantidadJugadores int `json:"CantidadJugadores"`
+	Region string `json:"Region"`
+	Activo bool `json:"Activo"`
+	FechaCreacion time.Time `json:"FechaCreacion"`
+	FechaModificacion time.Time `json:"FechaModificacion"`
+}
+
 // Encuentro_midController operations for Encuentro_mid
 type Encuentro_midController struct {
 	beego.Controller
@@ -133,12 +144,62 @@ func (c *Encuentro_midController) GetOne() {
 
 	err = json.Unmarshal(bodyEncuentro, &respuesta)
 
-	fmt.Println(err)
-
 	if err != nil {
 		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
 		c.Data["json"] = map[string]interface{}{
 			"Error" : "Respuesta inválida por parte del API de encuentros.",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	urlEquipo1 := fmt.Sprintf("http://localhost:8081/v1/equipo/%d", )
+
+	urlEquipo2 := fmt.Sprintf("http://localhost:8081/v1/equipo/%d", )
+
+	responseEquipo1, err := http.Get(urlEquipo1)
+
+	if err != nil {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Data["json"] = map[string]interface{}{
+			"error": "No fue posible comunicarse con la API de contactos",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	defer responseEquipo1.Body.Close()
+
+	responseEquipo2, err := http.Get(urlEquipo2)
+
+	if err != nil {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Data["json"] = map[string]interface{}{
+			"error": "No fue posible comunicarse con la API de contactos",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	defer responseEquipo2.Body.Close()
+
+	if responseEquipo1.StatusCode != http.StatusOK {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusNotFound,)
+
+		c.Data["json"] = map[string]interface{}{
+			"error": "No se encontró información de contacto",
+			"status": responseEquipo1.StatusCode,
+		}
+		c.ServeJSON()
+		return
+	}
+
+	if responseEquipo2.StatusCode != http.StatusOK {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusNotFound,)
+
+		c.Data["json"] = map[string]interface{}{
+			"error": "No se encontró información de contacto",
+			"status": responseEquipo2.StatusCode,
 		}
 		c.ServeJSON()
 		return
