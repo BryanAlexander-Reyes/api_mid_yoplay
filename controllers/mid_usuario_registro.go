@@ -7,15 +7,17 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	
 
 	beego "github.com/beego/beego/v2/server/web"
 )
 
 type Documento struct {
-	Id     string    `json:"id"`
+	IdDocumento    int    `json:"id"`
 }
 
 type Usuario struct {
+	Id                string	`json:"id_usuario"` 
 	Nombre            string     `json:"nombre"`
 	Apellido          string     `json:"apellido"`
 	NumeroDocumento   string     `json:"numero_documento"`
@@ -141,60 +143,56 @@ func (c* RegistroController) CrearUsuario(){
 		return
 	
 	}
-	documento:= Documento{
-		TipoDocumento: solicitud.TipoDocumento,
+	Usuario:= Usuario{
+		Nombre: solicitud.Nombre,
+		Apellido: solicitud.Apellido,
+		NumeroDocumento: solicitud.NumeroDocumento,
+		Email: solicitud.Email,
+		Telefono: solicitud.Telefono,
+		FechaNacimiento: solicitud.FechaNacimiento,
+		Terminos: solicitud.Terminos,
+		IdDocumento: solicitud.TipoDocumento.IdDocumento,
 	}
-	datosDocumento, err:= json.Marshal(documento)
-	if err !=nil {
+	
+	usuarioCreado, err:= json.Marshal((Usuario))
+	if err !=nil{
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"]= map[string]string{
-		"error":"no fue posible de convertir el json de documento",
+			"error":"no fue posible convertir el json de usuario",
 		}
 		c.ServeJSON()
 		return
 	}
-	respuestaDocumento, err:= http.Post("http://localhost:8080/v1/documento","aplication/json",bytes.NewBuffer(datosDocumento),)
-
+	respuestaUsuario, err:= http.Post("http://localhost:8080/v1/usuario","aplication/json",bytes.NewBuffer(usuarioCreado))
 	if err!=nil{
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"]= map[string]string{
-		"error":"no fue posible hacer post del documento",
+			"error":"No se pudo realizar el post de usuario",
 		}
 		c.ServeJSON()
 		return
 	}
-	defer respuestaDocumento.Body.Close()
-	if respuestaDocumento.StatusCode<http.StatusOK || respuestaDocumento.StatusCode>=http.StatusMultipleChoices{
-		c.Ctx.Output.SetStatus(respuestaDocumento.StatusCode)
-		c.Data["json"]= map[string]string{
-			"error":"api Crud de documento no creo el documento",
+	defer respuestaUsuario.Body.Close()
+	if respuestaUsuario.StatusCode< http.StatusOK || respuestaUsuario.StatusCode>= http.StatusMultipleChoices{
+		c.Ctx.Output.SetStatus(respuestaUsuario.StatusCode)
+		c.Data["json"] =map[string]string{
+			"error":"api CRUD de usuario no creo el usuario",
 		}
 		c.ServeJSON()
 		return
 	}
-
-	cuerpoDocumento, err:=io.ReadAll(respuestaDocumento.Body)
-	if err!=nil{
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"]= map[string]string{
-			"error":"No fue posible leer la respuesta del documento creado",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	var DocumentoCreado Documento
-	err= json.Unmarshal(cuerpoDocumento,&DocumentoCreado)
-
+	cuerpoUsuarioCreado, err:= io.ReadAll(respuestaUsuario.Body)
 	if err!=nil{
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"]=map[string]string{
-			"Error":"No fue posible procesar la respuesta",
+			"error":"no fue posible leer la respuesta del usuario creado",
 		}
+
 		c.ServeJSON()
 		return
 	}
-	idDocumento, err:=strconv.Atoi(DocumentoCreado.TipoDocumento)
+
+	
 	
 	fmt.Printf("Registro recivido: %+v\n",solicitud)
 
