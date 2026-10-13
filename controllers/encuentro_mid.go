@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"api_mid_yoplay/services"
+
 	beego "github.com/beego/beego/v2/server/web"
 )
 
@@ -40,18 +42,14 @@ type RespuestaEncuentros struct {
 	Succes  bool        `json:"succes"`
 }
 
-type Equipos struct {
-	Id int `json:"Id"`
-	NombreEquipo string `json:"NombreEquipo"`
-	Categoría string `json:"Categoria"`
-	CantidadJugadores int `json:"CantidadJugadores"`
-	Region string `json:"Region"`
-	Activo bool `json:"Activo"`
-	FechaCreacion time.Time `json:"FechaCreacion"`
-	FechaModificacion time.Time `json:"FechaModificacion"`
+type EncuentroFrontend struct {
+	NombreEquipo1 string `json:"NombreEquipo1"`
+	NombreEquipo2 string `json:"NombreEquipo2"`
+	Fecha         string `json:"Fecha"`
+	Hora          string `json:"Hora"`
 }
 
-// Encuentro_midController operations for Encuentro_mid
+// Encuentro_midController operations for Encuentro_mid.
 type Encuentro_midController struct {
 	beego.Controller
 }
@@ -66,260 +64,289 @@ func (c *Encuentro_midController) URLMapping() {
 }
 
 // Post ...
-// @Title Create
-// @Description create Encuentro_mid
-// @Param	body		body 	models.Encuentro_mid	true		"body for Encuentro_mid content"
-// @Success 201 {object} models.Encuentro_mid
-// @Failure 403 body is empty
-// @router / [post]
 func (c *Encuentro_midController) Post() {
-
 }
 
 // GetOne ...
 // @Title GetOne
-// @Description get Encuentro_mid by id
-// @Param	id		path 	string	true		"The key for staticblock"
-// @Success 200 {object} models.Encuentro_mid
-// @Failure 403 :id is empty
+// @Description Get encounter by ID and return frontend-friendly data.
+// @Param id path string true "ID del encuentro"
+// @Success 200 {object} EncuentroFrontend
+// @Failure 400 ID inválido
+// @Failure 502 Error al consultar las APIs
 // @router /:id [get]
 func (c *Encuentro_midController) GetOne() {
-
+	// Obtener y validar el ID.
 	idString := c.Ctx.Input.Param(":id")
 
 	id, err := strconv.Atoi(idString)
-
 	if err != nil {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadRequest,)
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
-			"Error" : "El ID del encuentro debe ser numérico.",
+			"Error": "El ID del encuentro debe ser numérico.",
 		}
 		c.ServeJSON()
 		return
 	}
 
+	// Consultar el encuentro en la CRUD de encuentros.
 	urlEncuentro := fmt.Sprintf(
-		"http://localhost:8082/v1/encuentro/%d", id,
+		"http://localhost:8082/v1/encuentro/%d",
+		id,
 	)
 
 	responseEncuentro, err := http.Get(urlEncuentro)
-
 	if err != nil {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
-
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"error": "No fué posible comunicarse con la API de encuentros",
+			"Error": "No fue posible comunicarse con la API de encuentros.",
 		}
 		c.ServeJSON()
 		return
 	}
-	
 	defer responseEncuentro.Body.Close()
 
 	if responseEncuentro.StatusCode != http.StatusOK {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error" : "El API de encuentros respondió erróneamente.",
-			"Status" : responseEncuentro.StatusCode,
+			"Error":  "El API de encuentros respondió con un estado erróneo.",
+			"Status": responseEncuentro.StatusCode,
 		}
 		c.ServeJSON()
 		return
 	}
 
+	bodyEncuentro, err := io.ReadAll(responseEncuentro.Body)
+	if err != nil {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"Error": "Error al leer la respuesta del API de encuentros.",
+		}
+		c.ServeJSON()
+		return
+	}
 
-	bodyEncuentro, err := io.ReadAll(responseEncuentro.Body,)
+	// La CRUD devuelve el encuentro como un objeto JSON directo.
+	
+	var encuentro Encuentro
 
-	fmt.Println(bodyEncuentro)
+	var envoltura struct {
+		Data json.RawMessage `json:"Data"`
+	}
+
+	if err := json.Unmarshal(bodyEncuentro, &envoltura); err != nil {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"Error":   "Respuesta JSON inválida del API de encuentros.",
+			"Detalle": err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	if len(envoltura.Data) > 0 &&
+		string(envoltura.Data) != "null" {
+
+		err = json.Unmarshal(envoltura.Data, &encuentro)
+	} else {
+		err = json.Unmarshal(bodyEncuentro, &encuentro)
+	}
 
 	if err != nil {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error" : "Error leyendo el API de encuentros.",
+			"Error":   "No fue posible decodificar el encuentro.",
+			"Detalle": err.Error(),
 		}
 		c.ServeJSON()
 		return
 	}
 
-	var respuesta RespuestaEncuentro
+	fmt.Printf(
+		"Encuentro recibido: ID=%d, Equipo1=%d, Equipo2=%d, Fecha=%s\n",
+		encuentro.Id,
+		encuentro.IdEquipo1,
+		encuentro.IdEquipo2,
+		encuentro.Fecha.Format(time.RFC3339),
+	)
 
-	err = json.Unmarshal(bodyEncuentro, &respuesta)
+	if encuentro.IdEquipo1 == 0 || encuentro.IdEquipo2 == 0 {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"Error": "El encuentro no contiene los identificadores de ambos equipos.",
+			"RespuestaCRUD": string(bodyEncuentro),
+		}
+		c.ServeJSON()
+		return
+	}
 
+	err = json.Unmarshal(bodyEncuentro, &encuentro)
 	if err != nil {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error" : "Respuesta inválida por parte del API de encuentros.",
+			"Error": "Respuesta JSON inválida por parte del API de encuentros.",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	urlEquipo1 := fmt.Sprintf("http://localhost:8081/v1/equipo/%d", )
+	// Crear el servicio de equipos.
+	equipoService := services.NewEquipoService(
+		"http://localhost:8081/v1/equipo/",
+	)
 
-	urlEquipo2 := fmt.Sprintf("http://localhost:8081/v1/equipo/%d", )
-
-	responseEquipo1, err := http.Get(urlEquipo1)
-
+	// Consultar el primer equipo.
+	equipo1, err := equipoService.ConsultarPorID(encuentro.IdEquipo1)
 	if err != nil {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"error": "No fue posible comunicarse con la API de contactos",
+			"Error": "Error al consultar el equipo 1.",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	defer responseEquipo1.Body.Close()
-
-	responseEquipo2, err := http.Get(urlEquipo2)
-
+	// Consultar el segundo equipo.
+	equipo2, err := equipoService.ConsultarPorID(encuentro.IdEquipo2)
 	if err != nil {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"error": "No fue posible comunicarse con la API de contactos",
+			"Error": "Error al consultar el equipo 2.",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	defer responseEquipo2.Body.Close()
-
-	if responseEquipo1.StatusCode != http.StatusOK {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusNotFound,)
-
-		c.Data["json"] = map[string]interface{}{
-			"error": "No se encontró información de contacto",
-			"status": responseEquipo1.StatusCode,
-		}
-		c.ServeJSON()
-		return
+	// Preparar únicamente los datos necesarios para el frontend.
+	encuentroFrontend := EncuentroFrontend{
+		NombreEquipo1: equipo1.NombreEquipo,
+		NombreEquipo2: equipo2.NombreEquipo,
+		Fecha:         encuentro.Fecha.Format("02/01/2006"),
+		Hora:          encuentro.Fecha.Format("15:04"),
 	}
 
-	if responseEquipo2.StatusCode != http.StatusOK {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusNotFound,)
-
-		c.Data["json"] = map[string]interface{}{
-			"error": "No se encontró información de contacto",
-			"status": responseEquipo2.StatusCode,
-		}
-		c.ServeJSON()
-		return
-	}
-
-	encuentro := respuesta.Data
-
-	encuentroCmp := Encuentro{
-		Id:                 encuentro.Id,
-		Fecha:              encuentro.Fecha,
-		IdTorneo:           encuentro.IdTorneo,
-		IdTipoDistribucion: encuentro.IdTipoDistribucion,
-		FaseTorneo:         encuentro.FaseTorneo,
-		IdEquipo1:          encuentro.IdEquipo1,
-		ResultadoEquipo1:   encuentro.ResultadoEquipo1,
-		IdEquipo2:         encuentro.IdEquipo2,
-		ResultadoEquipo2:   encuentro.ResultadoEquipo2,
-		Activo:             encuentro.Activo,
-		FechaCreacion:      encuentro.FechaCreacion,
-		FechaModificacion:  encuentro.FechaModificacion,
-	}
-
-
-	c.Data["json"] = encuentroCmp
+	// Devolver la respuesta.
+	c.Data["json"] = encuentroFrontend
 	c.ServeJSON()
 }
 
 // GetAll ...
 // @Title GetAll
-// @Description get Encuentro_mid
-// @Param	query	query	string	false	"Filter. e.g. col1:v1,col2:v2 ..."
-// @Param	fields	query	string	false	"Fields returned. e.g. col1,col2 ..."
-// @Param	sortby	query	string	false	"Sorted-by fields. e.g. col1,col2 ..."
-// @Param	order	query	string	false	"Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ..."
-// @Param	limit	query	string	false	"Limit the size of result set. Must be an integer"
-// @Param	offset	query	string	false	"Start position of result set. Must be an integer"
-// @Success 200 {object} models.Encuentro_mid
-// @Failure 403
+// @Description Get all encounters.
+// @Success 200 {object} RespuestaEncuentros
+// @Failure 502 Error al consultar el API
 // @router / [get]
-func (c *Encuentro_midController) GetAll() {
 
+func (c *Encuentro_midController) GetAll() {
 	urlEncuentros := "http://localhost:8082/v1/encuentro"
 
-	fmt.Println(urlEncuentros)
-
+	// Consultar todos los encuentros.
 	responseEncuentro, err := http.Get(urlEncuentros)
-
 	if err != nil {
 		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error" : "No fué posible comunicarse con la API de encuentros",
+			"Error": "No fue posible comunicarse con la API de encuentros.",
 		}
 		c.ServeJSON()
 		return
 	}
-
 	defer responseEncuentro.Body.Close()
 
 	if responseEncuentro.StatusCode != http.StatusOK {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error" : "El API de encuentros respondió erróneamente.",
-			"Status" : responseEncuentro.StatusCode,
+			"Error":  "El API de encuentros respondió con un estado erróneo.",
+			"Status": responseEncuentro.StatusCode,
 		}
 		c.ServeJSON()
 		return
 	}
 
-	bodyEncuentro, err := io.ReadAll(responseEncuentro.Body,)
-
-	if err != nil {
-		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway,)
-		c.Data["json"] = map[string]interface{}{
-			"Error" : "Error en lectura del API de encuentros.",
-			"Status" : responseEncuentro.StatusCode,
-		}
-		c.ServeJSON()
-		return
-	}
-
-	var respuesta RespuestaEncuentros
-
-	err = json.Unmarshal(bodyEncuentro, &respuesta)
-
-	fmt.Println(err)
-
+	// Leer la respuesta de la CRUD de encuentros.
+	bodyEncuentro, err := io.ReadAll(responseEncuentro.Body)
 	if err != nil {
 		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error":  "Respuesta inválidaa del API de encuentros.",
-			"Status": responseEncuentro.StatusCode,
-			"Data" : err,
+			"Error": "Error al leer la respuesta del API de encuentros.",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	var encuentrosCmp []Encuentro
+	// Decodificar la lista de encuentros.
+	var respuesta RespuestaEncuentros
 
-	for _, encuentro := range respuesta.Data {
-
-		encuentroCompleto := Encuentro{
-			Id:                 encuentro.Id,
-			Fecha:              encuentro.Fecha,
-			IdTorneo:           encuentro.IdTorneo,
-			IdTipoDistribucion: encuentro.IdTipoDistribucion,
-			FaseTorneo:         encuentro.FaseTorneo,
-			IdEquipo1:          encuentro.IdEquipo1,
-			ResultadoEquipo1:   encuentro.ResultadoEquipo1,
-			IdEquipo2:          encuentro.IdEquipo2,
-			ResultadoEquipo2:   encuentro.ResultadoEquipo2,
-			Activo:              encuentro.Activo,
-			FechaCreacion:       encuentro.FechaCreacion,
-			FechaModificacion:   encuentro.FechaModificacion,
+	err = json.Unmarshal(bodyEncuentro, &respuesta)
+	if err != nil {
+		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"Error":   "Respuesta JSON inválida del API de encuentros.",
+			"Detalle": err.Error(),
 		}
-
-		encuentrosCmp = append(encuentrosCmp, encuentroCompleto)
+		c.ServeJSON()
+		return
 	}
 
-	c.Data["json"] = encuentrosCmp
+	// Crear el servicio para consultar equipos.
+	equipoService := services.NewEquipoService(
+		"http://localhost:8081/v1/equipo",
+	)
+
+	// Preparar la lista que recibirá el frontend.
+	var encuentrosFrontend []EncuentroFrontend
+
+	// Recorrer todos los encuentros.
+	for _, encuentro := range respuesta.Data {
+
+		// Consultar el equipo 1.
+		equipo1, err := equipoService.ConsultarPorID(
+			encuentro.IdEquipo1,
+		)
+		if err != nil {
+			c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
+			c.Data["json"] = map[string]interface{}{
+				"Error":      "Error al consultar el equipo 1.",
+				"IdEncuentro": encuentro.Id,
+				"IdEquipo":    encuentro.IdEquipo1,
+				"Detalle":     err.Error(),
+			}
+			c.ServeJSON()
+			return
+		}
+
+		// Consultar el equipo 2.
+		equipo2, err := equipoService.ConsultarPorID(
+			encuentro.IdEquipo2,
+		)
+		if err != nil {
+			c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
+			c.Data["json"] = map[string]interface{}{
+				"Error":       "Error al consultar el equipo 2.",
+				"IdEncuentro": encuentro.Id,
+				"IdEquipo":    encuentro.IdEquipo2,
+				"Detalle":     err.Error(),
+			}
+			c.ServeJSON()
+			return
+		}
+
+		// Preparar los datos para el frontend.
+		encuentroFrontend := EncuentroFrontend{
+			NombreEquipo1: equipo1.NombreEquipo,
+			NombreEquipo2: equipo2.NombreEquipo,
+			Fecha:         encuentro.Fecha.Format("02/01/2006"),
+			Hora:          encuentro.Fecha.Format("15:04"),
+		}
+
+		// Agregar el encuentro a la lista.
+		encuentrosFrontend = append(
+			encuentrosFrontend,
+			encuentroFrontend,
+		)
+	}
+
+	// Devolver todos los encuentros procesados.
+	c.Data["json"] = encuentrosFrontend
 	c.ServeJSON()
 }
 
