@@ -26,7 +26,7 @@ func (c *Grupo_equipo_midController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *Grupo_equipo_midController) Post() {
-
+	// El modo es informativo.
 }
 
 // GetOne ...
@@ -37,7 +37,7 @@ func (c *Grupo_equipo_midController) Post() {
 // @Failure 403 :id is empty
 // @router /:id [get]
 func (c *Grupo_equipo_midController) GetOne() {
-
+	// GetOne no requiere de funcionalidad aquí. Lo que debe hacer el MID es traer TODOS los grupos y equipos del torneo.
 }
 
 // GetAll ...
@@ -53,7 +53,7 @@ func (c *Grupo_equipo_midController) GetOne() {
 // @Failure 403
 // @router / [get]
 func (c *Grupo_equipo_midController) GetAll() {
-
+	
 }
 
 // Put ...
@@ -65,7 +65,7 @@ func (c *Grupo_equipo_midController) GetAll() {
 // @Failure 403 :id is not int
 // @router /:id [put]
 func (c *Grupo_equipo_midController) Put() {
-
+	// El modo de este MID es informativo, así que no operará.
 }
 
 // Delete ...
@@ -76,5 +76,5 @@ func (c *Grupo_equipo_midController) Put() {
 // @Failure 403 id is empty
 // @router /:id [delete]
 func (c *Grupo_equipo_midController) Delete() {
-
+	// El modo es informativo.
 }

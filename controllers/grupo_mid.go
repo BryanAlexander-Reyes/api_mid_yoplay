@@ -4,6 +4,12 @@ import (
 	beego "github.com/beego/beego/v2/server/web"
 )
 
+type Grupo struct {
+	Id		int 	`json:"Id"`
+	Grupo	string	`json:"Grupo"`
+	Torneo	int	`json:"IdTorneo"`
+}
+
 // Grupo_midController operations for Grupo_mid
 type Grupo_midController struct {
 	beego.Controller
