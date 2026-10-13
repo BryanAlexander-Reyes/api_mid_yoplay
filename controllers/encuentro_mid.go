@@ -27,7 +27,7 @@ type Encuentro struct {
 }
 
 type RespuestaEncuentro struct {
-	Data    Encuentro `json:"Data"`
+	Data    *Encuentro `json:"Data"`
 	Messaje string    `json:"Messaje"`
 	Status  int       `json:"status"`
 	Succes  bool      `json:"succes"`

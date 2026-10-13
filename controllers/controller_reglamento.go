@@ -9,6 +9,14 @@ import (
 )
 
 
+
+
+type imagenUrl struct {
+	IDImange string `json:"Idimagen"`
+	Imagen string `json:"imagen"`
+}
+
+
 type ReglamentoController struct{
 	web.Controller
 }
