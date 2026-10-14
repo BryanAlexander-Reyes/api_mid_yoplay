@@ -11,6 +11,11 @@
 *.sln.docstates
 *.env
 
+*go.mod
+*go.sum
+
+/api_mid_yoplay.exe
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -77,7 +82,7 @@ nunit-*.xml
 # Build Results of an ATL Project
 [Dd]ebugPS/
 [Rr]eleasePS/
-dlldata.c
+dllData.c
 
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
@@ -213,7 +218,7 @@ publish/
 *.[Pp]ublish.xml
 *.azurePubxml
 # Note: Comment the next line if you want to checkin your web deploy settings,
-# but database connection strings (with potential passwords) will be unencrypted
+# but Database connection strings (with potential passwords) will be unencrypted
 *.pubxml
 *.publishproj
 
@@ -293,7 +298,7 @@ ServiceFabricBackup/
 *.ndf
 
 # Business Intelligence projects
-*.rdl.data
+*.rdl.Data
 *.bim.layout
 *.bim_*.settings
 *.rptproj.rsuser
@@ -391,7 +396,7 @@ MSBuild_Logs/
 # Visual Studio History (VSHistory) files
 .vshistory/
 
-# BeatPulse healthcheck temp database
+# BeatPulse healthcheck temp Database
 healthchecksdb
 
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
