@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"golang.org/x/crypto/bcrypt"
+	"time"
 
 	beego "github.com/beego/beego/v2/server/web"
 )
@@ -17,33 +18,32 @@ type Documento struct {
 }
 
 type Usuario struct {
-	Id               int	`json:"id_usuario"` 
-	Nombre            string     `json:"nombre"`
-	Apellido          string     `json:"apellido"`
-	NumeroDocumento   string     `json:"numero_documento"`
-	Email             string     `json:"email"`
-	Telefono          string     `json:"telefono"`
-	Terminos bool `json:"terminos"`
-	FechaNacimiento   string  `json:"fecha_nacimiento"`
-	IdDocumento       int `json:"id_documento"`
-	FechaRegistro     string  `json:"fecha_registro"`
+	Id               int	`json:"Id"` 
+	Nombre            string     `json:"Nombre"`
+	Apellido          string     `json:"Apellido"`
+	NumeroDocumento   string     `json:"NumeroDocumento"`
+	Email             string     `json:"Email"`
+	Telefono          string     `json:"Telefono"`
+	Terminos bool `json:"Terminos"`
+	FechaNacimiento   *time.Time  `json:"FechaNacimiento"`
+	IdDocumento       *Documento `json:"IdDocumento"`
 }
 type Contrasena struct {
-	Id       int  `json:"id_contrasena"`
-	HashContrasena    string    `json:"hash_contrasena"`
-	IdUsuario         int  `json:"id_usuario"`
+	Id       int  `json:"id"`
+	HashContrasena    string    `json:"HashContrasena"`
+	IdUsuario        *Usuario  `json:"IdUsuario"`
 	
 }
 
 type  Registro struct{
-	Nombre            string     `json:"nombre"`
+	Nombre            string     `json:"Nombre"`
 	Apellido          string     `json:"apellido"`
 	NumeroDocumento   string     `json:"numero_documento"`
 	Email             string     `json:"email"`
 	Telefono          string     `json:"telefono"`
 	Terminos bool `json:"terminos"`
 	FechaNacimiento   string  `json:"fecha_nacimiento"`
-	FechaRegistro     string  `json:"fecha_registro"`
+	FechaRegistro     string  `json:"FechaRegistro"`
 	TipoDocumento     *Documento    `json:"tipo_documento"`
 	Contrasena        string    `json:"contrasena"`
 }
@@ -51,6 +51,13 @@ type RegistroResponse struct {
     Mensaje   string `json:"mensaje"`
     IdUsuario int    `json:"id_usuario"`
     IdContrasena int `json:"id_contrasena"`
+}
+type UsuarioCRUDResponse struct {
+    Succes bool    `json:"succes"`
+    Status int     `json:"status"`
+    Mensaje string `json:"Mensaje"`
+    Data   Usuario `json:"Data"`
+	ID		Contrasena `json:"id"`
 }
 
 
@@ -153,16 +160,28 @@ func (c* RegistroController) CrearUsuario(){
 		return
 	
 	}
+	
+	fechaNacimiento, err := time.Parse("2006-01-02", solicitud.FechaNacimiento)
+	if err != nil {
+    	c.Ctx.Output.SetStatus(http.StatusBadRequest)
+    	c.Data["json"] = map[string]string{
+        "mensaje": "La fecha de nacimiento no tiene un formato válido",
+    }
+    c.ServeJSON()
+    return
+}
 	usuario:= Usuario{
 		Nombre: solicitud.Nombre,
 		Apellido: solicitud.Apellido,
 		NumeroDocumento: solicitud.NumeroDocumento,
 		Email: solicitud.Email,
 		Telefono: solicitud.Telefono,
-		FechaNacimiento: solicitud.FechaNacimiento,
+		FechaNacimiento: &fechaNacimiento,
 		Terminos: solicitud.Terminos,
-		IdDocumento: solicitud.TipoDocumento.IdDocumento,
-	}
+		IdDocumento: &Documento{
+			IdDocumento: solicitud.TipoDocumento.IdDocumento,
+	},
+}
 	
 	UsuarioJSON, err:= json.Marshal(usuario)
 	if err !=nil{
@@ -173,7 +192,9 @@ func (c* RegistroController) CrearUsuario(){
 		c.ServeJSON()
 		return
 	}
-	respuestaUsuario, err:= http.Post(urlUsuarios,"aplication/json",bytes.NewBuffer(UsuarioJSON))
+	fmt.Println("Respuesta del POST:", string(UsuarioJSON))
+	respuestaUsuario, err:= http.Post(urlUsuarios,"application/json",bytes.NewBuffer(UsuarioJSON))
+
 	if err!=nil{
 		fmt.Println("Error al enviar POST al CRUD:", err)
     fmt.Println("URL del CRUD:", urlUsuarios)
@@ -203,19 +224,48 @@ func (c* RegistroController) CrearUsuario(){
 		c.ServeJSON()
 		return
 	}
-	var UsuarioCreado Usuario
-	err=json.Unmarshal(cuerpoUsuarioCreado, &UsuarioCreado)
-	
-	if err!=nil{
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"]=map[string]string{
-			"Error":"No fue posible procesar la respuesta del crud",
-		}
-		c.ServeJSON()
-		return
-	}
 
-	idUsuario:= UsuarioCreado.Id
+
+	
+fmt.Println("Respuesta completa del CRUD:", string(cuerpoUsuarioCreado))
+
+var respuestaCRUD UsuarioCRUDResponse
+
+err = json.Unmarshal(cuerpoUsuarioCreado, &respuestaCRUD)
+if err != nil {
+    fmt.Println("Error al interpretar respuesta:", err)
+    fmt.Println("Respuesta recibida:", string(cuerpoUsuarioCreado))
+    return
+}
+
+if !respuestaCRUD.Succes {
+    fmt.Println("El CRUD rechazó la creación del usuario.")
+    fmt.Println("Mensaje del CRUD:", respuestaCRUD.Mensaje)
+
+    c.Ctx.Output.SetStatus(http.StatusBadGateway)
+    c.Data["json"] = map[string]interface{}{
+        "mensaje": "El CRUD no pudo crear el usuario",
+        "detalle": respuestaCRUD.Mensaje,
+    }
+    c.ServeJSON()
+    return
+}
+
+UsuarioCreado := &respuestaCRUD.Data
+idUsuario := UsuarioCreado.Id
+
+fmt.Println("ID del usuario creado:", idUsuario)
+
+if idUsuario <= 0 {
+    fmt.Println("Error: el CRUD no devolvió un ID válido.")
+    c.Ctx.Output.SetStatus(http.StatusBadGateway)
+    c.Data["json"] = map[string]interface{}{
+        "mensaje": "El CRUD no devolvió un ID válido",
+    }
+    c.ServeJSON()
+    return
+}
+
 	
 	hash, err:= bcrypt.GenerateFromPassword(
 		[]byte(solicitud.Contrasena),
@@ -229,10 +279,13 @@ func (c* RegistroController) CrearUsuario(){
 		c.ServeJSON()
 		return
 	}
+	hashTexto := string(hash)
 
 	contrasenaRequest := Contrasena{
-		IdUsuario: idUsuario,
-		HashContrasena: string(hash),
+		IdUsuario: &Usuario{
+			Id: idUsuario,
+		},
+		HashContrasena: hashTexto,
 	}
 
 	jsoncontrasena, err := json.Marshal(contrasenaRequest)
@@ -247,6 +300,7 @@ func (c* RegistroController) CrearUsuario(){
 	respuestaContrasena,err:= http.Post(urlContrasena,"application/json",bytes.NewBuffer(jsoncontrasena),)
 	
 	if err!=nil{
+		
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"]= map[string]string{
 			"Error": "El usuario fue creado pero no fue posible no fue posible crear la contrasena",
@@ -256,6 +310,7 @@ func (c* RegistroController) CrearUsuario(){
 	}
 	defer respuestaContrasena.Body.Close()
 	if respuestaContrasena.StatusCode<http.StatusOK|| respuestaContrasena.StatusCode>=http.StatusMultipleChoices{
+		fmt.Println("ID del usuario que se eliminará:", UsuarioCreado.Id)
 		urlEliminarUsuario := urlUsuarios +"/"+ strconv.Itoa(UsuarioCreado.Id)
 
 		request, err :=http.NewRequest(http.MethodDelete,urlEliminarUsuario,nil)
@@ -309,10 +364,11 @@ func (c* RegistroController) CrearUsuario(){
 		c.ServeJSON()
 		return
 	}
+	
 
 	resultado :=RegistroResponse{
-		Mensaje: "Usuario y rol creados exitosamente.",
-		IdUsuario: contrasenaCreada.IdUsuario,
+		Mensaje: "Usuario y contraseña creados exitosamente.",
+		IdUsuario: UsuarioCreado.Id,
 		IdContrasena: contrasenaCreada.Id,
 	}
 	
