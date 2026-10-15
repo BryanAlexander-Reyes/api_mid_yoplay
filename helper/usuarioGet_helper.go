@@ -11,12 +11,13 @@ import (
 func BuscarUsuarioCorreo(correo string) (bool, error){
 
 	urlUsuarios, _ := beego.AppConfig.String("url_usuario")
+	urlconsulta := urlUsuarios + "?email=" + correo
 
 	if correo == ""{
 		return  false, errors.New("el correo es obligatorio")
 	}
 
-	peticion, err := http.NewRequest(http.MethodGet,urlUsuarios,nil,)
+	peticion, err := http.NewRequest(http.MethodGet,urlconsulta,nil,)
 	if err!=nil{
 		return false, err
 	}
