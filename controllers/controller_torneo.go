@@ -56,6 +56,8 @@ type TorneoCompleto struct {
 	Division        *TipoDivision `json:"divicion"`
 	Imagen          *Imagen       `json:"imagen"`
 	Premiaciones    []Premios     `json:"premiaciones"`
+
+// Ey
 }
 
 type ImagenCreadaResponse struct {

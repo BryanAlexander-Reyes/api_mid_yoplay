@@ -54,6 +54,8 @@ type Encuentro_midController struct {
 	beego.Controller
 }
 
+//Ey!
+
 // URLMapping ...
 func (c *Encuentro_midController) URLMapping() {
 	c.Mapping("Post", c.Post)
