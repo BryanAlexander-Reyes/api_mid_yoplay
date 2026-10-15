@@ -10,9 +10,10 @@ import (
 
 func init() {
     beego.Router("/", &controllers.MainController{})
-	  beego.Router("api/v1/encuentro/:id", &controllers.Encuentro_midController{}, "get:GetOne")
-	  beego.Router("api/v1/encuentro", &controllers.Encuentro_midController{}, "get:GetAll")
-	  beego.Router("api/v1/torneo/:id",&controllers.TorneoController{}, "get:CrearTorneos")
-	  beego.Router("api/v1/info-torneo/", &controllers.Info_torneo_midController{}, "get:GetAll")
-	  beego.Router("api/v1/info-torneo/:id", &controllers.Info_torneo_midController{}, "get:GetOne")
+	beego.Router("api/v1/encuentro/:id", &controllers.Encuentro_midController{}, "get:GetOne")
+	beego.Router("api/v1/encuentro", &controllers.Encuentro_midController{}, "get:GetAll")
+	beego.Router("api/v1/torneo/:id",&controllers.TorneoController{}, "get:CrearTorneos")
+	beego.Router("api/v1/info-torneo/", &controllers.Info_torneo_midController{}, "get:GetAll")
+	beego.Router("api/v1/info-torneo/:id", &controllers.Info_torneo_midController{}, "get:GetOne")
+	beego.Router("/api/creacion-usuario",&controllers.RegistroController{}, "post:CrearUsuario")
 }
