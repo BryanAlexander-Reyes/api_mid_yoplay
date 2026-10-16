@@ -235,6 +235,7 @@ func (c *TorneoController) CrearTorneos() {
 		return
 	}
 
+
 	// Crear la imagen inicialmente sin relacionarla con el torneo.
 	datosImagen := map[string]interface{}{
 		"UrlImagen":  strings.TrimSpace(torneo.Imagen.URLImagen),
