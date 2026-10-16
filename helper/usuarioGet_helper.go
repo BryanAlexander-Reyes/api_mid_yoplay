@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"io"
+	"net/url"
 
-	"github.com/beego/beego/v2"
+	beego "github.com/beego/beego/v2/server/web"
 )
 
 func BuscarUsuarioCorreo(correo string) (bool, error){
 
 	urlUsuarios, _ := beego.AppConfig.String("url_usuario")
-	urlconsulta := urlUsuarios + "?email=" + correo
+	urlconsulta := urlUsuarios + "?query=" + url.QueryEscape("Email:"+correo)
 
 	if correo == ""{
 		return  false, errors.New("el correo es obligatorio")
@@ -34,7 +36,13 @@ func BuscarUsuarioCorreo(correo string) (bool, error){
 			respuesta.StatusCode,
 		)
 	}
+	cuerpo, err:=io.ReadAll(respuesta.Body)
+	if err!=nil{
+		return false, err
+	}
+	fmt.Println("Respuesta Crud", string(cuerpo))
 
+	
 
 	return false, nil
 }
