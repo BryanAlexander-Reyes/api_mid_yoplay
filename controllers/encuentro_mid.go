@@ -30,9 +30,9 @@ type Encuentro struct {
 
 type RespuestaEncuentro struct {
 	Data    *Encuentro `json:"Data"`
-	Messaje string     `json:"Messaje"`
-	Status  int        `json:"status"`
-	Succes  bool       `json:"succes"`
+	Messaje string    `json:"Messaje"`
+	Status  int       `json:"status"`
+	Succes  bool      `json:"succes"`
 }
 
 type RespuestaEncuentros struct {
@@ -54,6 +54,8 @@ type Encuentro_midController struct {
 	beego.Controller
 }
 
+//Ey!
+
 // URLMapping ...
 func (c *Encuentro_midController) URLMapping() {
 	c.Mapping("Post", c.Post)
@@ -69,7 +71,7 @@ func (c *Encuentro_midController) Post() {
 
 // GetOne ...
 // @Title GetOne
-// @Description Get encounter by ID and return frontend-friendly Data.
+// @Description Get encounter by ID and return frontend-friendly data.
 // @Param id path string true "ID del encuentro"
 // @Success 200 {object} EncuentroFrontend
 // @Failure 400 ID inválido
@@ -127,7 +129,7 @@ func (c *Encuentro_midController) GetOne() {
 	}
 
 	// La CRUD devuelve el encuentro como un objeto JSON directo.
-
+	
 	var encuentro Encuentro
 
 	var envoltura struct {
@@ -173,7 +175,7 @@ func (c *Encuentro_midController) GetOne() {
 	if encuentro.IdEquipo1 == 0 || encuentro.IdEquipo2 == 0 {
 		c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error":         "El encuentro no contiene los identificadores de ambos equipos.",
+			"Error": "El encuentro no contiene los identificadores de ambos equipos.",
 			"RespuestaCRUD": string(bodyEncuentro),
 		}
 		c.ServeJSON()
@@ -217,7 +219,7 @@ func (c *Encuentro_midController) GetOne() {
 		return
 	}
 
-	// Preparar únicamente los Datas necesarios para el frontend.
+	// Preparar únicamente los datos necesarios para el frontend.
 	encuentroFrontend := EncuentroFrontend{
 		NombreEquipo1: equipo1.NombreEquipo,
 		NombreEquipo2: equipo2.NombreEquipo,
@@ -305,7 +307,7 @@ func (c *Encuentro_midController) GetAll() {
 		if err != nil {
 			c.Ctx.ResponseWriter.WriteHeader(http.StatusBadGateway)
 			c.Data["json"] = map[string]interface{}{
-				"Error":       "Error al consultar el equipo 1.",
+				"Error":      "Error al consultar el equipo 1.",
 				"IdEncuentro": encuentro.Id,
 				"IdEquipo":    encuentro.IdEquipo1,
 				"Detalle":     err.Error(),
@@ -330,7 +332,7 @@ func (c *Encuentro_midController) GetAll() {
 			return
 		}
 
-		// Preparar los Datas para el frontend.
+		// Preparar los datos para el frontend.
 		encuentroFrontend := EncuentroFrontend{
 			NombreEquipo1: equipo1.NombreEquipo,
 			NombreEquipo2: equipo2.NombreEquipo,

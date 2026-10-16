@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
+/credentials
 
 *go.mod
 *go.sum
@@ -82,7 +83,7 @@ nunit-*.xml
 # Build Results of an ATL Project
 [Dd]ebugPS/
 [Rr]eleasePS/
-dllData.c
+dlldata.c
 
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
@@ -218,7 +219,7 @@ publish/
 *.[Pp]ublish.xml
 *.azurePubxml
 # Note: Comment the next line if you want to checkin your web deploy settings,
-# but Database connection strings (with potential passwords) will be unencrypted
+# but database connection strings (with potential passwords) will be unencrypted
 *.pubxml
 *.publishproj
 
@@ -298,7 +299,7 @@ ServiceFabricBackup/
 *.ndf
 
 # Business Intelligence projects
-*.rdl.Data
+*.rdl.data
 *.bim.layout
 *.bim_*.settings
 *.rptproj.rsuser
@@ -396,7 +397,7 @@ MSBuild_Logs/
 # Visual Studio History (VSHistory) files
 .vshistory/
 
-# BeatPulse healthcheck temp Database
+# BeatPulse healthcheck temp database
 healthchecksdb
 
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
