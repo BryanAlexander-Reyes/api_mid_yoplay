@@ -99,7 +99,7 @@ func NewDistribucionService(
 ) *DistribucionService {
 	return &DistribucionService{
 		repo:       repo,
-		minEquipos: 2,
+		minEquipos: 4,
 	}
 }
 
@@ -244,25 +244,27 @@ func (s *DistribucionService) registrarError(
 }
 
 // Calcula cuándo corresponde ejecutar la distribución:
-// el día anterior al inicio, a las 12:00, hora de Colombia.
+// el día anterior al inicio, a las 00:00, hora de Colombia.
+
 func FechaProgramadaDistribucion(
-	fechaInicio time.Time,
+    fechaInicio time.Time,
 ) (time.Time, error) {
-	loc, err := time.LoadLocation("America/Bogota")
-	if err != nil {
-		return time.Time{},
-			fmt.Errorf("cargando zona horaria: %w", err)
-	}
+    loc, err := time.LoadLocation("America/Bogota")
+    if err != nil {
+        return time.Time{},
+            fmt.Errorf("cargando zona horaria: %w", err)
+    }
 
-	inicio := fechaInicio.In(loc)
+    inicio := fechaInicio.In(loc)
 
-	mediodia := time.Date(
-		inicio.Year(),
-		inicio.Month(),
-		inicio.Day(),
-		12, 0, 0, 0,
-		loc,
-	)
+    medianoche := time.Date(
+        inicio.Year(),
+        inicio.Month(),
+        inicio.Day(),
+        0, 0, 0, 0,
+        loc,
+    )
 
-	return mediodia.AddDate(0, 0, -1), nil
+    return medianoche.AddDate(0, 0, -1), nil
 }
+
