@@ -44,9 +44,18 @@ func (c *MidCorreoRegistroController) EnviarCorreoRegistro() {
 		c.ServeJSON()
 		return
 	}
-	c.Data["json"] = map[string]string{
-		"mensaje": "El correo no existe enviando codigo",
+	err = helper.EnviarCodigoVerificacion(request.Correo, "registro")
+	if err!=nil{
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"]=map[string]string{
+			"Mensaje":"No fue posible enviar el código de verficacion",
+			"error":err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+	c.Data["json"]=map[string]string{
+		"Mensaje":"El codigo de verificacion fue enviado correctamente",
 	}
 	c.ServeJSON()
-
 }
