@@ -17,4 +17,5 @@ func init() {
 	beego.Router("api/v1/info-torneo/:id", &controllers.Info_torneo_midController{}, "get:GetOne")
 	beego.Router("/api/creacion-usuario",&controllers.RegistroController{}, "post:CrearUsuario")
 	beego.Router("/api/enviarcorreoregistro",&controllers.MidCorreoRegistroController{}, "post:EnviarCorreoRegistro")
+	beego.Router("/api/verificarcodigocorreo",&controllers.VerificarCodigoCorreo{}, "post:VerificarCodigo")
 }

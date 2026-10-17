@@ -17,7 +17,7 @@ type VerificarCodigoCorreo struct{
 	beego.Controller
 }
 
-func (c* VerificarCodigoCorreo) verificarCodigoCorreo(){
+func (c* VerificarCodigoCorreo) verificarCodigo(){
 	var request verificarCodigoCorreo
 	err:= json.NewDecoder(c.Ctx.Request.Body).Decode(&request)
 	if err!=nil{
