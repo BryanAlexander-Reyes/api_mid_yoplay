@@ -4,9 +4,11 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/beego/beego/v2/server/web"
 )
@@ -14,25 +16,91 @@ import (
 type Integrante struct {
 	Nombre   string `json:"nombre"`
 	Posicion string `json:"posicion"`
-	Numero   int    `json:"numero"`
 	Correo   string `json:"correo"`
 	Telefono string `json:"telefono"`
 }
 
 type Equipos struct {
-	IdTorneo    int          `json:"id_torneo"`
-	NombreEquipo string      `json:"nombre_equipo"`
-	Categoria   string       `json:"categoria"`
-	Region      string       `json:"region"`
-	Integrantes []Integrante `json:"integrantes"`
-}
-
-type EquipoCreado struct {
-	IdEquipo int `json:"id_equipo"`
+	IdTorneo     int          `json:"id_torneo"`
+	NombreEquipo string       `json:"nombre_equipo"`
+	Categoria    string       `json:"categoria"`
+	Region       string       `json:"region"`
+	Integrantes  []Integrante `json:"integrantes"`
 }
 
 type EquipoMIDController struct {
 	web.Controller
+}
+
+func solicitudEquipo(metodo, direccion string, datos interface{}) ([]byte, int, error) {
+	var cuerpo io.Reader
+
+	if datos != nil {
+		contenido, err := json.Marshal(datos)
+		if err != nil {
+			return nil, 0, err
+		}
+		cuerpo = bytes.NewReader(contenido)
+	}
+
+	solicitud, err := http.NewRequest(metodo, direccion, cuerpo)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	solicitud.Header.Set("Content-Type", "application/json")
+
+	cliente := &http.Client{Timeout: 15 * time.Second}
+
+	respuesta, err := cliente.Do(solicitud)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer respuesta.Body.Close()
+
+	contenido, err := io.ReadAll(respuesta.Body)
+	if err != nil {
+		return nil, respuesta.StatusCode, err
+	}
+
+	return contenido, respuesta.StatusCode, nil
+}
+
+func obtenerIDEquipo(contenido []byte) (int, error) {
+	var datos map[string]interface{}
+
+	if err := json.Unmarshal(contenido, &datos); err != nil {
+		return 0, err
+	}
+
+	for _, clave := range []string{"id_equipo", "IdEquipo", "IDEquipo", "id", "Id", "ID"} {
+		if valor, existe := datos[clave]; existe {
+			switch numero := valor.(type) {
+			case float64:
+				if numero > 0 {
+					return int(numero), nil
+				}
+			case string:
+				var id int
+				if _, err := fmt.Sscanf(numero, "%d", &id); err == nil && id > 0 {
+					return id, nil
+				}
+			}
+		}
+	}
+
+	for _, clave := range []string{"data", "Data", "datos", "resultado"} {
+		if valor, existe := datos[clave]; existe {
+			contenidoInterno, err := json.Marshal(valor)
+			if err == nil {
+				if id, err := obtenerIDEquipo(contenidoInterno); err == nil {
+					return id, nil
+				}
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("el CRUD no devolvió un identificador válido para el equipo")
 }
 
 func (c *EquipoMIDController) Post() {
@@ -92,17 +160,7 @@ func (c *EquipoMIDController) Post() {
 			c.Ctx.Output.SetStatus(http.StatusBadRequest)
 			c.Data["json"] = map[string]interface{}{
 				"ok":      false,
-				"mensaje": "Cada integrante debe tener nombre y posición",
-			}
-			c.ServeJSON()
-			return
-		}
-
-		if equipo.Integrantes[i].Numero < 0 {
-			c.Ctx.Output.SetStatus(http.StatusBadRequest)
-			c.Data["json"] = map[string]interface{}{
-				"ok":      false,
-				"mensaje": "El número del integrante no puede ser negativo",
+				"mensaje": fmt.Sprintf("El integrante %d debe tener nombre y posición", i+1),
 			}
 			c.ServeJSON()
 			return
@@ -132,64 +190,34 @@ func (c *EquipoMIDController) Post() {
 	}
 
 	datosEquipo := map[string]interface{}{
-		"id_torneo":          equipo.IdTorneo,
-		"nombre_equipo":      equipo.NombreEquipo,
-		"categoria":          equipo.Categoria,
-		"region":             equipo.Region,
-		"cantidad_jugadores": len(equipo.Integrantes),
+		"IdTorneo": map[string]interface{}{
+			"Id": equipo.IdTorneo,
+		},
+		"NombreEquipo":     equipo.NombreEquipo,
+		"Categoria":        equipo.Categoria,
+		"Region":           equipo.Region,
+		"CantidadJugadores": len(equipo.Integrantes),
 	}
 
-	contenidoEquipo, err := json.Marshal(datosEquipo)
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]interface{}{
-			"ok":      false,
-			"mensaje": "No fue posible preparar los datos del equipo",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	respuestaEquipo, err := http.Post(urlEquipos, "application/json", bytes.NewBuffer(contenidoEquipo))
-	if err != nil {
+	respuesta, estado, err := solicitudEquipo(http.MethodPost, urlEquipos, datosEquipo)
+	if err != nil || estado < 200 || estado >= 300 {
 		c.Ctx.Output.SetStatus(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
-			"mensaje": "No fue posible conectar con el CRUD de equipos",
+			"mensaje": "No se pudo registrar el equipo en el CRUD",
+			"detalle": string(respuesta),
 		}
 		c.ServeJSON()
 		return
 	}
-	defer respuestaEquipo.Body.Close()
 
-	cuerpoEquipo, err := io.ReadAll(respuestaEquipo.Body)
+	idEquipo, err := obtenerIDEquipo(respuesta)
 	if err != nil {
 		c.Ctx.Output.SetStatus(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
-			"mensaje": "No fue posible leer la respuesta del CRUD de equipos",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	if respuestaEquipo.StatusCode < 200 || respuestaEquipo.StatusCode >= 300 {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
-			"ok":      false,
-			"mensaje": "El CRUD rechazó el registro del equipo",
-			"detalle": string(cuerpoEquipo),
-		}
-		c.ServeJSON()
-		return
-	}
-
-	var equipoCreado EquipoCreado
-	if err := json.Unmarshal(cuerpoEquipo, &equipoCreado); err != nil || equipoCreado.IdEquipo <= 0 {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
-			"ok":      false,
-			"mensaje": "El CRUD no devolvió un id_equipo válido",
+			"mensaje": "El equipo se creó, pero no se pudo obtener su identificador",
+			"detalle": string(respuesta),
 		}
 		c.ServeJSON()
 		return
@@ -197,49 +225,31 @@ func (c *EquipoMIDController) Post() {
 
 	integrantesCreados := make([]map[string]interface{}, 0, len(equipo.Integrantes))
 
-	for _, integrante := range equipo.Integrantes {
+	for i, integrante := range equipo.Integrantes {
 		datosIntegrante := map[string]interface{}{
-			"id_equipo": equipoCreado.IdEquipo,
-			"nombre":    integrante.Nombre,
-			"posicion":  integrante.Posicion,
-			"numero":    integrante.Numero,
-			"correo":    integrante.Correo,
-			"telefono":  integrante.Telefono,
+			"IdEquipo": map[string]interface{}{
+				"Id": idEquipo,
+			},
+			"Nombre":   integrante.Nombre,
+			"Posicion": integrante.Posicion,
+			"Correo":   integrante.Correo,
+			"Telefono": integrante.Telefono,
+			"Activo":   true,
 		}
 
-		contenidoIntegrante, err := json.Marshal(datosIntegrante)
-		if err != nil {
-			c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-			c.Data["json"] = map[string]interface{}{
-				"ok":      false,
-				"mensaje": "No fue posible preparar los datos de los integrantes",
-			}
-			c.ServeJSON()
-			return
-		}
+		respuestaIntegrante, estado, err := solicitudEquipo(
+			http.MethodPost,
+			urlIntegrantes,
+			datosIntegrante,
+		)
 
-		respuestaIntegrante, err := http.Post(urlIntegrantes, "application/json", bytes.NewBuffer(contenidoIntegrante))
-		if err != nil {
-			c.Ctx.Output.SetStatus(http.StatusBadGateway)
-			c.Data["json"] = map[string]interface{}{
-				"ok":      false,
-				"mensaje": "No fue posible conectar con el CRUD de integrantes",
-				"id_equipo": equipoCreado.IdEquipo,
-			}
-			c.ServeJSON()
-			return
-		}
-
-		cuerpoIntegrante, err := io.ReadAll(respuestaIntegrante.Body)
-		respuestaIntegrante.Body.Close()
-
-		if err != nil || respuestaIntegrante.StatusCode < 200 || respuestaIntegrante.StatusCode >= 300 {
+		if err != nil || estado < 200 || estado >= 300 {
 			c.Ctx.Output.SetStatus(http.StatusBadGateway)
 			c.Data["json"] = map[string]interface{}{
 				"ok":        false,
-				"mensaje":   "El equipo fue creado, pero falló el registro de un integrante",
-				"id_equipo": equipoCreado.IdEquipo,
-				"detalle":   string(cuerpoIntegrante),
+				"mensaje":   fmt.Sprintf("El equipo se creó, pero falló el registro del integrante %d", i+1),
+				"id_equipo": idEquipo,
+				"detalle":   string(respuestaIntegrante),
 			}
 			c.ServeJSON()
 			return
@@ -248,7 +258,8 @@ func (c *EquipoMIDController) Post() {
 		integrantesCreados = append(integrantesCreados, map[string]interface{}{
 			"nombre":   integrante.Nombre,
 			"posicion": integrante.Posicion,
-			"numero":   integrante.Numero,
+			"correo":   integrante.Correo,
+			"telefono": integrante.Telefono,
 		})
 	}
 
@@ -257,7 +268,7 @@ func (c *EquipoMIDController) Post() {
 		"ok":      true,
 		"mensaje": "Equipo e integrantes registrados correctamente",
 		"equipo": map[string]interface{}{
-			"id_equipo":          equipoCreado.IdEquipo,
+			"id_equipo":          idEquipo,
 			"id_torneo":          equipo.IdTorneo,
 			"nombre_equipo":      equipo.NombreEquipo,
 			"categoria":          equipo.Categoria,
