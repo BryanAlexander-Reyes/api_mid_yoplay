@@ -5,6 +5,7 @@ import(
 	"encoding/json"
 	beego "github.com/beego/beego/v2/server/web"
 	"net/http"
+	
 )
 
 type VerificarCodigo struct{
@@ -70,18 +71,44 @@ func (c* VerificarCodigoCorreo) VerificarCodigo(){
 		request.Proposito,
 	)
 
-	if valido{
-		c.Data["json"]=map[string]string{
-			"mensaje":"El codigo de verificacion es valido",
-		}
-		c.ServeJSON()
-		return
-	}else{
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"]=map[string]string{
-			"Mensaje":"El codigo de verificacion es invalido",
-		}
-		c.ServeJSON()
-		return
-	}
+	if valido {
+    respuesta := map[string]string{
+        "mensaje": "El codigo de verificacion es valido",
+    }
+
+    if request.Proposito == "recuperacion" {
+        idUsuario, err := helper.ObtenerIDUsuarioCorreo(request.Correo)
+        if err != nil {
+            c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+            c.Data["json"] = map[string]string{
+                "mensaje": "Error al obtener usuario",
+            }
+            c.ServeJSON()
+            return
+        }
+
+        token, err := helper.GenerarTokenRecuperacion()
+        if err != nil {
+            c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+            c.Data["json"] = map[string]string{
+                "mensaje": "No fue posible generar token de recuperacion",
+            }
+            c.ServeJSON()
+            return
+        }
+
+        helper.GuardarTokenRecuperacion(token, idUsuario)
+        respuesta["token"] = token
+    }
+
+    c.Data["json"] = respuesta
+    c.ServeJSON()
+    return
 }
+
+c.Ctx.Output.SetStatus(http.StatusBadRequest)
+c.Data["json"] = map[string]string{
+    "mensaje": "El codigo de verificacion es invalido",
+}
+c.ServeJSON()
+return}
