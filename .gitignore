@@ -14,7 +14,7 @@
 
 *go.mod
 *go.sum
-
+/token
 /api_mid_yoplay.exe
 
 # User-specific files (MonoDevelop/Xamarin Studio)
