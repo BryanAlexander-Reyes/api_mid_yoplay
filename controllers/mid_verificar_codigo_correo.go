@@ -106,9 +106,10 @@ func (c* VerificarCodigoCorreo) VerificarCodigo(){
     return
 }
 
-c.Ctx.Output.SetStatus(http.StatusBadRequest)
-c.Data["json"] = map[string]string{
-    "mensaje": "El codigo de verificacion es invalido",
+	c.Ctx.Output.SetStatus(http.StatusBadRequest)
+	c.Data["json"] = map[string]string{
+ 	   "mensaje": "El codigo de verificacion es invalido",
+	}
+	c.ServeJSON()
+	return
 }
-c.ServeJSON()
-return}
