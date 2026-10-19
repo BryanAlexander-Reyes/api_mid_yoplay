@@ -12,10 +12,12 @@ func init() {
     beego.Router("/", &controllers.MainController{})
 	beego.Router("api/v1/encuentro/:id", &controllers.Encuentro_midController{}, "get:GetOne")
 	beego.Router("api/v1/encuentro", &controllers.Encuentro_midController{}, "get:GetAll")
-	beego.Router("api/v1/torneo/:id",&controllers.TorneoController{}, "get:CrearTorneos")
+	// beego.Router("api/v1/torneo/:id",&controllers.TorneoController{}, "get:CrearTorneos")
 	beego.Router("api/v1/info-torneo/", &controllers.Info_torneo_midController{}, "get:GetAll")
 	beego.Router("api/v1/info-torneo/:id", &controllers.Info_torneo_midController{}, "get:GetOne")
 	beego.Router("/api/creacion-usuario",&controllers.RegistroController{}, "post:CrearUsuario")
 	beego.Router("/api/enviarcorreoregistro",&controllers.MidCorreoRegistroController{}, "post:EnviarCorreoRegistro")
 	beego.Router("/api/verificarcodigocorreo",&controllers.VerificarCodigoCorreo{}, "post:VerificarCodigo")
+	beego.Router("/api/recuperarcontrasena",&controllers.MidRecuperarContrasenaController{}, "post:RecuperarContrasena")
+	beego.Router("/api/cambiarcontrasena",&controllers.MidRecuperarContrasenaController{}, "put:CambiarContrasena")
 }
