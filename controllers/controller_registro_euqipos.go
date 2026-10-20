@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"io"
+	"net/http"
+	"strings"
 
 	"github.com/beego/beego/v2/server/web"
 )
@@ -105,12 +108,27 @@ func obtenerIDEquipo(contenido []byte) (int, error) {
 
 func (c *EquipoMIDController) Post() {
 	var equipo Equipos
+type EquipoMID struct {
+	IdTorneo          int    `json:"id_torneo"`
+	NombreEquipo      string `json:"nombre_equipo"`
+	Categoria         string `json:"categoria"`
+	CantidadJugadores int    `json:"cantidad_jugadores"`
+	Region            string `json:"region"`
+}
+
+type EquipoController struct {
+	web.Controller
+}
+
+func (c *EquipoController) Post() {
+	var equipo EquipoMID
 
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &equipo); err != nil {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
 			"mensaje": "El formato de los datos no es válido",
+			"Mensaje": "Los datos del equipo no tienen un formato válido",
 		}
 		c.ServeJSON()
 		return
@@ -125,6 +143,7 @@ func (c *EquipoMIDController) Post() {
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
 			"mensaje": "Debe seleccionar un torneo válido",
+			"Mensaje": "Debe seleccionar un torneo válido",
 		}
 		c.ServeJSON()
 		return
@@ -135,6 +154,7 @@ func (c *EquipoMIDController) Post() {
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
 			"mensaje": "El nombre del equipo y la región son obligatorios",
+			"Mensaje": "El nombre del equipo y la región son obligatorios",
 		}
 		c.ServeJSON()
 		return
@@ -145,6 +165,11 @@ func (c *EquipoMIDController) Post() {
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
 			"mensaje": "Debe registrar al menos un integrante",
+	if equipo.CantidadJugadores < 1 {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "La cantidad de jugadores debe ser mayor que cero",
 		}
 		c.ServeJSON()
 		return
@@ -173,6 +198,12 @@ func (c *EquipoMIDController) Post() {
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
 			"mensaje": "No está configurada la URL del CRUD de equipos",
+	datos, err := json.Marshal(equipo)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "No fue posible preparar los datos del equipo",
 		}
 		c.ServeJSON()
 		return
@@ -184,6 +215,16 @@ func (c *EquipoMIDController) Post() {
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
 			"mensaje": "No está configurada la URL del CRUD de integrantes",
+	respuesta, err := http.Post(
+		"http://localhost:8080/v1/equipo",
+		"application/json",
+		bytes.NewBuffer(datos),
+	)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "No fue posible comunicarse con el CRUD de equipos",
 		}
 		c.ServeJSON()
 		return
@@ -206,6 +247,14 @@ func (c *EquipoMIDController) Post() {
 			"ok":      false,
 			"mensaje": "No se pudo registrar el equipo en el CRUD",
 			"detalle": string(respuesta),
+	defer respuesta.Body.Close()
+
+	contenido, err := io.ReadAll(respuesta.Body)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "No fue posible leer la respuesta del CRUD",
 		}
 		c.ServeJSON()
 		return
@@ -218,6 +267,12 @@ func (c *EquipoMIDController) Post() {
 			"ok":      false,
 			"mensaje": "El equipo se creó, pero no se pudo obtener su identificador",
 			"detalle": string(respuesta),
+	if respuesta.StatusCode < 200 || respuesta.StatusCode >= 300 {
+		c.Ctx.Output.SetStatus(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "El CRUD rechazó el registro del equipo",
+			"Detalle": string(contenido),
 		}
 		c.ServeJSON()
 		return
@@ -276,6 +331,11 @@ func (c *EquipoMIDController) Post() {
 			"cantidad_jugadores": len(equipo.Integrantes),
 		},
 		"integrantes": integrantesCreados,
+	c.Ctx.Output.SetStatus(http.StatusCreated)
+	c.Data["json"] = map[string]interface{}{
+		"ok":      true,
+		"Mensaje": "Equipo registrado correctamente",
+		"Datos":   json.RawMessage(contenido),
 	}
 	c.ServeJSON()
 }

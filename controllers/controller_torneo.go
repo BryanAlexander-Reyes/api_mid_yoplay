@@ -271,6 +271,47 @@ func (c *TorneoController) CrearTorneos() {
 		c.Data["json"] = map[string]interface{}{
 			"ok":      false,
 			"Mensaje": "La URL de la imagen no puede estar vacía",
+	jsonImagen, err := json.Marshal(solicitudImagen)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"message": "Falta configurar url_imagenes"}
+		c.ServeJSON()
+		return
+	}
+
+	urlTorneos, err := web.AppConfig.String("url_torneos")
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"message": "Falta configurar url_torneos"}
+		c.ServeJSON()
+		return
+	}
+
+	urlPremiaciones, err := web.AppConfig.String("url_premiaciones")
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{"message": "Falta configurar url_premiaciones"}
+		c.ServeJSON()
+		return
+	}
+
+
+	// Crear la imagen inicialmente sin relacionarla con el torneo.
+	datosImagen := map[string]interface{}{
+		"UrlImagen":  strings.TrimSpace(torneo.Imagen.URLImagen),
+		"TipoImagen": torneo.Imagen.TipoImagen,
+		"Activo":     true,
+	}
+
+	respuestaImagen, estado, err := enviarSolicitud(http.MethodPost, urlImagenes, datosImagen)
+	if err != nil || estado < 200 || estado >= 300 {
+		c.Ctx.Output.SetStatus(http.StatusBadGateway)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "No se pudo crear la imagen en el CRUD",
+			"detalle": string(respuestaImagen),
+		c.Data["json"] = map[string]string{
+			"error": "No fue posible convertir el JSON de imagen",
 		}
 		c.ServeJSON()
 		return
