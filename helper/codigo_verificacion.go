@@ -5,11 +5,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"html"
 	"math/big"
+	"os"
 	"strings"
 	"sync"
 	"time"
-	
 
 	"api_mid_yoplay/services"
 )
@@ -100,8 +101,26 @@ func EnviarCodigoVerificacion(correo, proposito string)error{
 	}
 
 	asunto := "Codigo de verificacion YoPLAY"
-	cuerpo:="Su codigo de verificacion es: " + codigo + "\nEste codigo es valido por 3 minutos."
+	// lee la plantilla
+	plantilla, err:= os.ReadFile("plantillaCodigo/codigo_verificacion.html")
+	if err!=nil{
+		return fmt.Errorf("Error al leer la plantilla html:%w", err)
+	} 
+	// convertir la plantilla a texto para remplazar los marcadores
 
+	cuerpo:= string(plantilla)
+
+	cuerpo= strings.ReplaceAll(
+		cuerpo,
+		"{{proposito}}",
+		html.EscapeString(proposito),
+	)
+
+	cuerpo= strings.ReplaceAll(
+		cuerpo,
+		"{{codigo}}",
+		codigo,
+	)
 	_,err= servicio.SendEmail(correo, asunto,cuerpo)
 	if err!=nil{
 		return fmt.Errorf("Error al enviar el correo de verificacion: %v", err)
