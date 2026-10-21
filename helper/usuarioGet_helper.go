@@ -22,6 +22,8 @@ type responseUsuario struct {
 type IdUsuario struct {
 	ID    int    `json:"Id"`
 	Email string `json:"Email"`
+	Nombre string `json:"nombre"`
+	Apellido string `json:"apellido"`
 }
 type responseContrasena struct {
 	Data []IdContrasena `json:"Data"`

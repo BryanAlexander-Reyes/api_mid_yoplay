@@ -229,7 +229,8 @@ func saveToken(path string, Token*oauth2.Token) error{
 func (g *GmailService) SendEmail(
 	destinatario string,
 	asunto string,
-	cuerpo string,
+	cuerpoHTML string,
+
 	)(string, error){
 		if strings.TrimSpace(destinatario)==""{
 			return "", fmt.Errorf(
@@ -241,6 +242,9 @@ func (g *GmailService) SendEmail(
 				"El asunto es obligatorio",
 			)
 		}
+		if strings.TrimSpace(cuerpoHTML)==""{
+			return "",fmt.Errorf("el cuerpo html es obligatorio")
+		}
 
 		// crear el mensaje mime
 		// estructura de mime si o si 
@@ -249,10 +253,11 @@ func (g *GmailService) SendEmail(
 		menesajeMIME:= strings.Join([]string{
 			"To: " +destinatario,
 			"Subject: " +asunto,
-			"Content-Type: text/plain; charset=\"UFT-8\"",
+			"Content-Type: text/html; charset=\"UTF-8\"",
 			"MIME-Version: 1.0",
+			"Content-Transfer-Encoding: 8bit",
 			"",
-			cuerpo,
+			cuerpoHTML,
 		},"\r\n")
 
 		mensajeCodificado:= base64.RawURLEncoding.EncodeToString([]byte(menesajeMIME))

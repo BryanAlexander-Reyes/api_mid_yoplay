@@ -24,4 +24,5 @@ func init() {
 	beego.Router("/api/torneo",&controllers.TorneoController{},"post:CrearTorneos",)
 	beego.Router("/api/reglamento",&controllers.ReglamentoMIDController{},"post:CrearReglamento",)	
 	beego.Router("/api/equipo/registro",&controllers.EquipoMIDController{},"post:Post",) 
+	beego.Router("/api/login",&controllers.MidLoginController{},"post:IniciarSeSion",)
 }
