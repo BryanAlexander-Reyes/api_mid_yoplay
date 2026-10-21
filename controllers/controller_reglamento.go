@@ -235,15 +235,16 @@ func (c *ReglamentoMIDController) CrearReglamento() {
 		return
 	}
 
-	datosReglamento := map[string]interface{}{
-		"IdTipoReglamento": request.IDTipoReglamento,
-		"IdTipoDeporte":    request.IDTipoDeporte,
-		"IdReglas": map[string]interface{}{
-			"Id": request.IDReglas,
-		},
-		"Idioma": request.Idioma,
-		"Activo": true,
-	}
+datosReglamento := map[string]interface{}{
+    "IdTipoReglamento": request.IDTipoReglamento,
+	"IdTorneo": map[string]interface{}{
+   		 "Id": request.IDTorneo,
+	},
+    "IdTipoDeporte":    request.IDTipoDeporte,
+    "IdReglas":         request.IDReglas,
+    "Idioma":           request.Idioma,
+    "Activo":           true,
+}
 
 	contenido, _, err := solicitudReglamento(
 		http.MethodPost,
@@ -256,9 +257,12 @@ func (c *ReglamentoMIDController) CrearReglamento() {
 			"Mensaje": "No se pudo registrar el reglamento en el CRUD",
 			"error":   err.Error(),
 		}
+
 		c.ServeJSON()
 		return
+
 	}
+	fmt.Println("Respuesta del CRUD de reglamentos:", string(contenido))
 
 	var resultado interface{}
 

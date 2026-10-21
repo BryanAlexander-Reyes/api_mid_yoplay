@@ -18,7 +18,7 @@ func init() {
 	beego.Router("/api/creacion-usuario",&controllers.RegistroController{}, "post:CrearUsuario")
 	beego.Router("/api/enviarcorreoregistro",&controllers.MidCorreoRegistroController{}, "post:EnviarCorreoRegistro")
 	beego.Router("/api/verificarcodigocorreo",&controllers.VerificarCodigoCorreo{}, "post:VerificarCodigo")
-	beego.Router("/api/torneo",&controllers.TorneoController{},"post:CrearTorneos",)
+	beego.Router("/api/torneo", &controllers.TorneoController{}, "post:CrearTorneos")
 	beego.Router("/api/reglamento",&controllers.ReglamentoMIDController{},"post:CrearReglamento",)	
 	beego.Router("/api/equipo/registro",&controllers.EquipoMIDController{},"post:Post",) 
 }
