@@ -24,26 +24,51 @@ type Info_torneo_midController struct {
 // Estructuras para construir la respuesta del torneo.
 // Se completarán al conectar las consultas reales del repositorio.
 type TorneoInfo struct {
-	ID                 int    `json:"Id"`
-	Deporte            int    `json:"IdTipoDeporte"`
-	Nombre             string `json:"NombreTorneo"`
-	Objetivo           string `json:"Objetivo"`
-	Descripcion        string `json:"Descripcion"`
-	DescripcionTorneo  string `json:"DescripcionTorneo"`
-	Lugar              string `json:"Ubicacion"`
-	Fecha              string `json:"FechaInicio"`
-	FechaFin           string `json:"FechaFin"`
-	FechaCierre        string `json:"FechaCierre"`
-	Premiacion         struct {
+	ID                int               `json:"Id"`
+	Deporte           int               `json:"IdTipoDeporte"`
+	Nombre            string            `json:"NombreTorneo"`
+	Objetivo          string            `json:"Objetivo"`
+	Descripcion       string            `json:"Descripcion"`
+	DescripcionTorneo string            `json:"DescripcionTorneo"`
+	Lugar             string            `json:"Ubicacion"`
+	Fecha             string            `json:"FechaInicio"`
+	FechaFin          string            `json:"FechaFin"`
+	FechaCierre       string            `json:"FechaCierre"`
+	Imagen            *TorneoImagenCRUD `json:"IdImagen"`
+	Premiacion        struct {
 		ID int `json:"Id"`
 	} `json:"IdPremiacion"`
-	Estado             string `json:"estado"`
+	Estado string `json:"estado"`
+}
+
+type TorneoImagenCRUD struct {
+	ID             int    `json:"Id"`
+	URLImagen      string `json:"UrlImagen"`
+	URLImagenAlt   string `json:"URLImagen"`
+	URLImagenSnake string `json:"url_imagen"`
+	ImagenURL      string `json:"imagenurl"`
+}
+
+func (imagen *TorneoImagenCRUD) UnmarshalJSON(data []byte) error {
+	var id int
+	if err := json.Unmarshal(data, &id); err == nil {
+		imagen.ID = id
+		return nil
+	}
+
+	type torneoImagenAlias TorneoImagenCRUD
+	var detalle torneoImagenAlias
+	if err := json.Unmarshal(data, &detalle); err != nil {
+		return err
+	}
+	*imagen = TorneoImagenCRUD(detalle)
+	return nil
 }
 
 type PremioTorneo struct {
-	ID                  int    `json:"Id"`
-	CantidadPremiacion  int    `json:"CantidadPremiacion"`
-	Descripcion         string `json:"Descripcion"`
+	ID                 int    `json:"Id"`
+	CantidadPremiacion int    `json:"CantidadPremiacion"`
+	Descripcion        string `json:"Descripcion"`
 }
 
 type TorneoGrupoCRUD struct {
@@ -58,14 +83,14 @@ type TorneoGrupoEquipoCRUD struct {
 }
 
 type TorneoEncuentroCRUD struct {
-	ID                 int       `json:"Id"`
-	Fecha              time.Time `json:"Fecha"`
-	IDTorneo           int       `json:"IdTorneo"`
-	Fase               string    `json:"FaseTorneo"`
-	IDEquipo1          int       `json:"IdEquipo1"`
-	ResultadoEquipo1   string    `json:"ResultadoEquipo1"`
-	IDEquipo2          int       `json:"IdEquipo2"`
-	ResultadoEquipo2   string    `json:"ResultadoEquipo2"`
+	ID               int       `json:"Id"`
+	Fecha            time.Time `json:"Fecha"`
+	IDTorneo         int       `json:"IdTorneo"`
+	Fase             string    `json:"FaseTorneo"`
+	IDEquipo1        int       `json:"IdEquipo1"`
+	ResultadoEquipo1 string    `json:"ResultadoEquipo1"`
+	IDEquipo2        int       `json:"IdEquipo2"`
+	ResultadoEquipo2 string    `json:"ResultadoEquipo2"`
 }
 
 type TorneoGrupoEncuentroCRUD struct {
@@ -92,14 +117,15 @@ type TorneoEncuentroDetalle struct {
 }
 
 type TorneoGrupoDetalle struct {
-	ID         int                     `json:"Id"`
-	Nombre     string                  `json:"Grupo"`
-	Equipos    []TorneoEquipoDetalle   `json:"Equipos"`
+	ID         int                      `json:"Id"`
+	Nombre     string                   `json:"Grupo"`
+	Equipos    []TorneoEquipoDetalle    `json:"Equipos"`
 	Encuentros []TorneoEncuentroDetalle `json:"Encuentros"`
 }
 
 type RespuestaDetalleTorneo struct {
 	NombreTorneo string                   `json:"NombreTorneo"`
+	Imagen       string                   `json:"Imagen"`
 	Ubicacion    string                   `json:"Ubicacion"`
 	Fecha        string                   `json:"Fecha"`
 	Estado       string                   `json:"Estado"`
@@ -115,12 +141,12 @@ type GrupoEquipo struct {
 }
 
 type GrupoEncuentro struct {
-	ID        int    `json:"id_encuentro"`
-	IDGrupo   int    `json:"id_grupo,omitempty"`
-	EquipoLocal string `json:"equipo_local"`
+	ID              int    `json:"id_encuentro"`
+	IDGrupo         int    `json:"id_grupo,omitempty"`
+	EquipoLocal     string `json:"equipo_local"`
 	EquipoVisitante string `json:"equipo_visitante"`
-	Fecha     string `json:"fecha,omitempty"`
-	Estado    string `json:"estado,omitempty"`
+	Fecha           string `json:"fecha,omitempty"`
+	Estado          string `json:"estado,omitempty"`
 }
 
 type Equipo struct {
@@ -129,16 +155,17 @@ type Equipo struct {
 }
 
 type RespuestaInfoTorneo struct {
-	Torneo        TorneoInfo      `json:"torneo"`
-	Grupos        []GrupoEquipo   `json:"grupos"`
+	Torneo        TorneoInfo       `json:"torneo"`
+	Grupos        []GrupoEquipo    `json:"grupos"`
 	Encuentros    []GrupoEncuentro `json:"encuentros"`
-	Clasificacion []interface{}   `json:"clasificacion"`
+	Clasificacion []interface{}    `json:"clasificacion"`
 	Fixture       []GrupoEncuentro `json:"fixture"`
 }
 
 type RespuestaTournaments struct {
 	NombreDeporte     string `json:"NombreDeporte"`
 	NombreTorneo      string `json:"NombreTorneo"`
+	Imagen            string `json:"Imagen"`
 	DescripcionTorneo string `json:"DescripcionTorneo"`
 	Ubicacion         string `json:"Ubicacion"`
 	FechaInicio       string `json:"FechaInicio"`
@@ -196,6 +223,12 @@ func (c *Info_torneo_midController) GetOne() {
 	var torneo TorneoInfo
 	if err := consultarCRUD(ctx, fmt.Sprintf("http://localhost:8081/v1/torneo/%d", id), &torneo); err != nil {
 		responderErrorConsulta(c, "No fue posible consultar el torneo.", err)
+		return
+	}
+
+	urlImagen, err := consultarURLImagenTorneo(ctx, torneo.Imagen)
+	if err != nil {
+		responderErrorConsulta(c, "No fue posible consultar la imagen del torneo.", err)
 		return
 	}
 
@@ -358,6 +391,7 @@ func (c *Info_torneo_midController) GetOne() {
 
 	respuesta := RespuestaDetalleTorneo{
 		NombreTorneo: torneo.Nombre,
+		Imagen:       urlImagen,
 		Ubicacion:    torneo.Lugar,
 		Fecha:        formatearRangoFechas(fechaInicio, fechaFin),
 		Estado:       estado,
@@ -369,6 +403,50 @@ func (c *Info_torneo_midController) GetOne() {
 	}
 	c.Data["json"] = respuesta
 	c.ServeJSON()
+}
+
+func consultarURLImagenTorneo(ctx context.Context, imagen *TorneoImagenCRUD) (string, error) {
+	if imagen == nil {
+		return "", nil
+	}
+	for _, urlImagen := range []string{
+		imagen.URLImagen,
+		imagen.URLImagenAlt,
+		imagen.URLImagenSnake,
+		imagen.ImagenURL,
+	} {
+		if urlImagen = strings.TrimSpace(urlImagen); urlImagen != "" {
+			return urlImagen, nil
+		}
+	}
+	if imagen.ID <= 0 {
+		return "", nil
+	}
+
+	baseURL, err := beego.AppConfig.String("url_imagenes")
+	if err != nil || strings.TrimSpace(baseURL) == "" {
+		return "", fmt.Errorf("no está configurada la URL del servicio de imágenes")
+	}
+	return consultarImagenPorID(ctx, imagen.ID, baseURL)
+}
+
+func consultarImagenPorID(ctx context.Context, id int, baseURL string) (string, error) {
+	var imagenCRUD TorneoImagenCRUD
+	endpoint := fmt.Sprintf("%s/%d", strings.TrimRight(baseURL, "/"), id)
+	if err := consultarCRUD(ctx, endpoint, &imagenCRUD); err != nil {
+		return "", err
+	}
+	for _, urlImagen := range []string{
+		imagenCRUD.URLImagen,
+		imagenCRUD.URLImagenAlt,
+		imagenCRUD.URLImagenSnake,
+		imagenCRUD.ImagenURL,
+	} {
+		if urlImagen = strings.TrimSpace(urlImagen); urlImagen != "" {
+			return urlImagen, nil
+		}
+	}
+	return "", fmt.Errorf("el CRUD de imágenes no devolvió la URL para la imagen %d", id)
 }
 
 func consultarCRUD(ctx context.Context, url string, destino interface{}) error {
@@ -480,7 +558,7 @@ func (c *Info_torneo_midController) GenerarDistribucion() {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]interface{}{
 			"estado_distribucion": string(services.ConError),
-			"mensaje": "El ID del torneo debe ser un entero positivo",
+			"mensaje":             "El ID del torneo debe ser un entero positivo",
 		}
 		c.ServeJSON()
 		return
@@ -490,9 +568,9 @@ func (c *Info_torneo_midController) GenerarDistribucion() {
 	if distribucionService == nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
-			"id_torneo": idTorneo,
+			"id_torneo":           idTorneo,
 			"estado_distribucion": string(services.ConError),
-			"mensaje": "El servicio de distribución no está configurado",
+			"mensaje":             "El servicio de distribución no está configurado",
 		}
 		c.ServeJSON()
 		return
@@ -522,9 +600,9 @@ func (c *Info_torneo_midController) GenerarDistribucion() {
 
 		c.Ctx.Output.SetStatus(status)
 		c.Data["json"] = map[string]interface{}{
-			"id_torneo": idTorneo,
+			"id_torneo":           idTorneo,
 			"estado_distribucion": string(services.ConError),
-			"mensaje": mensaje,
+			"mensaje":             mensaje,
 		}
 		c.ServeJSON()
 		return
@@ -548,7 +626,7 @@ func (c *Info_torneo_midController) GetAll() {
 	if err != nil {
 		c.Ctx.Output.SetStatus(http.StatusBadGateway)
 		c.Data["json"] = map[string]interface{}{
-			"Error": "No ha sido posible comunicarse con el API de torneos.",
+			"Error":   "No ha sido posible comunicarse con el API de torneos.",
 			"Detalle": err.Error(),
 		}
 		c.ServeJSON()
@@ -669,6 +747,7 @@ func (c *Info_torneo_midController) GetAll() {
 	ahora := time.Now()
 	hoy := time.Date(ahora.Year(), ahora.Month(), ahora.Day(), 0, 0, 0, 0, ahora.Location())
 	resultado := make([]RespuestaTournaments, 0, len(torneos))
+	urlsImagenesPorID := make(map[int]string)
 	for _, torneo := range torneos {
 		nombreDeporte, existe := deportesPorID[torneo.Deporte]
 		if !existe {
@@ -680,6 +759,26 @@ func (c *Info_torneo_midController) GetAll() {
 			}
 			c.ServeJSON()
 			return
+		}
+
+		urlImagen := ""
+		if torneo.Imagen != nil && torneo.Imagen.ID > 0 {
+			var existe bool
+			urlImagen, existe = urlsImagenesPorID[torneo.Imagen.ID]
+			if !existe {
+				urlImagen, err = consultarURLImagenTorneo(c.Ctx.Request.Context(), torneo.Imagen)
+				if err != nil {
+					responderErrorConsulta(c, "No fue posible consultar la imagen de un torneo.", err)
+					return
+				}
+				urlsImagenesPorID[torneo.Imagen.ID] = urlImagen
+			}
+		} else {
+			urlImagen, err = consultarURLImagenTorneo(c.Ctx.Request.Context(), torneo.Imagen)
+			if err != nil {
+				responderErrorConsulta(c, "No fue posible consultar la imagen de un torneo.", err)
+				return
+			}
 		}
 
 		fechaInicio, err := parseFecha(torneo.Fecha)
@@ -749,6 +848,7 @@ func (c *Info_torneo_midController) GetAll() {
 		resultado = append(resultado, RespuestaTournaments{
 			NombreDeporte:     nombreDeporte,
 			NombreTorneo:      torneo.Nombre,
+			Imagen:            urlImagen,
 			DescripcionTorneo: descripcion,
 			Ubicacion:         torneo.Lugar,
 			FechaInicio:       fechaFormateada,
