@@ -18,104 +18,95 @@ type TorneoController struct {
 	web.Controller
 }
 
-type TorneoTipoDeporte struct {
-	ID int `json:"id"`
-}
-
-type TorneoTipoDistribucion struct {
-	ID int `json:"id"`
-}
-
-type TorneoImagen struct {
-	URLImagen  string `json:"url_imagen"`
-	ImagenUrl  string `json:"imagenurl"`
-	TipoImagen string `json:"tipo_imagen"`
-}
-
-type TorneoPremiacion struct {
-	Puesto string `json:"puesto"`
-	Premio int    `json:"premio"`
-}
-
 type TorneoEntrada struct {
-	NombreTorneo   string                   `json:"nombre_torneo"`
-	Lugar          string                   `json:"lugar"`
-	Ubicacion      string                   `json:"ubicacion"`
-	Objetivo       string                   `json:"objetivo"`
-	CantidadEquipo int                      `json:"cantidad_equipo"`
-	CantidadEquipos int                     `json:"cantidadequipos"`
-	FechaInicio    string                   `json:"fechaInicio"`
-	FechaFin       string                   `json:"fechaFin"`
-	TipoDeporte    *TorneoTipoDeporte       `json:"tipo_deporte"`
-	Distribucion   *TorneoTipoDistribucion  `json:"tipo_distribucion"`
-	Division       *TorneoTipoDistribucion  `json:"divicion"`
-	Imagen         *TorneoImagen            `json:"imagen"`
-	Premiaciones   []TorneoPremiacion       `json:"premiaciones"`
+	IdTipoDeporte      int                 `json:"IdTipoDeporte"`
+	NombreTorneo       string              `json:"NombreTorneo"`
+	FechaInicio        string              `json:"FechaInicio"`
+	FechaFin           string              `json:"FechaFin"`
+	Ubicacion          string              `json:"Ubicacion"`
+	Objetivo           string              `json:"Objetivo"`
+	IdImagen           int                 `json:"IdImagen"`
+	FechaFase          string              `json:"FechaFase"`
+	CantidadEquipo     int                 `json:"CantidadEquipo"`
+	IdTipoDistribucion int                 `json:"IdTipoDistribucion"`
+	CantidadGrupos	   int 				    `json:"CantidadGrupos"`
+	Activo             bool                `json:"Activo"`
+	Imagen             *ImagenEntrada      `json:"Imagen"`
+	Premiaciones       []PremiacionEntrada `json:"Premiaciones"`
+}
+
+type ImagenEntrada struct {
+	UrlImagen  string `json:"UrlImagen"`
+	TipoImagen string `json:"TipoImagen"`
+	Activo     bool   `json:"Activo"`
+}
+
+type PremiacionEntrada struct {
+	IdTorneo           int    `json:"IdTorneo"`
+	CantidadPremiacion int    `json:"CantidadPremiacion"`
+	Descripcion        string `json:"Descripcion"`
+	Activo             bool   `json:"Activo"`
 }
 
 func torneoSolicitud(metodo, direccion string, datos interface{}) ([]byte, int, error) {
 	var cuerpo io.Reader
 
 	if datos != nil {
-		contenido, err := json.Marshal(datos)
+		jsonDatos, err := json.Marshal(datos)
 		if err != nil {
 			return nil, 0, err
 		}
-		cuerpo = bytes.NewReader(contenido)
+		cuerpo = bytes.NewBuffer(jsonDatos)
 	}
 
-	solicitud, err := http.NewRequest(metodo, direccion, cuerpo)
+	req, err := http.NewRequest(metodo, direccion, cuerpo)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	solicitud.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 
 	cliente := &http.Client{
 		Timeout: 15 * time.Second,
 	}
 
-	respuesta, err := cliente.Do(solicitud)
+	resp, err := cliente.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer respuesta.Body.Close()
+	defer resp.Body.Close()
 
-	respuestaCuerpo, err := io.ReadAll(respuesta.Body)
+	respuesta, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, respuesta.StatusCode, err
+		return nil, resp.StatusCode, err
 	}
 
-	return respuestaCuerpo, respuesta.StatusCode, nil
+	return respuesta, resp.StatusCode, nil
 }
 
-func torneoObtenerID(respuesta []byte) (int, error) {
-	var datos interface{}
-
-	if err := json.Unmarshal(respuesta, &datos); err != nil {
-		return 0, err
-	}
-
-	return torneoBuscarID(datos)
-}
-
-func torneoBuscarID(datos interface{}) (int, error) {
-	switch valor := datos.(type) {
+func torneoBuscarID(valor interface{}) int {
+	switch dato := valor.(type) {
 	case map[string]interface{}:
-		for _, clave := range []string{
-			"Id", "ID", "id",
-			"id_imagen", "id_torneo",
-		} {
-			if dato, existe := valor[clave]; existe {
-				switch numero := dato.(type) {
+		for _, clave := range []string{"Id", "ID", "id", "id_torneo", "id_imagen"} {
+			if valorID, existe := dato[clave]; existe {
+				switch id := valorID.(type) {
 				case float64:
-					if numero > 0 {
-						return int(numero), nil
+					if id > 0 {
+						return int(id)
+					}
+				case int:
+					if id > 0 {
+						return id
+					}
+				case json.Number:
+					numero, err := id.Int64()
+					if err == nil && numero > 0 {
+						return int(numero)
 					}
 				case string:
-					id, err := strconv.Atoi(numero)
-					if err == nil && id > 0 {
-						return id, nil
+					numero, err := strconv.Atoi(id)
+					if err == nil && numero > 0 {
+						return numero
 					}
 				}
 			}
@@ -125,24 +116,36 @@ func torneoBuscarID(datos interface{}) (int, error) {
 			"Data", "data", "Datos", "datos",
 			"resultado", "result", "imagen", "torneo",
 		} {
-			if dato, existe := valor[clave]; existe {
-				id, err := torneoBuscarID(dato)
-				if err == nil {
-					return id, nil
+			if interno, existe := dato[clave]; existe {
+				id := torneoBuscarID(interno)
+				if id > 0 {
+					return id
 				}
 			}
 		}
 
 	case []interface{}:
-		for _, elemento := range valor {
-			id, err := torneoBuscarID(elemento)
-			if err == nil {
-				return id, nil
+		for _, elemento := range dato {
+			id := torneoBuscarID(elemento)
+			if id > 0 {
+				return id
 			}
 		}
 	}
 
-	return 0, fmt.Errorf("no se encontró el identificador en la respuesta del CRUD")
+	return 0
+}
+
+func torneoObtenerID(respuesta []byte) int {
+	decodificador := json.NewDecoder(bytes.NewReader(respuesta))
+	decodificador.UseNumber()
+
+	var datos interface{}
+	if err := decodificador.Decode(&datos); err != nil {
+		return 0
+	}
+
+	return torneoBuscarID(datos)
 }
 
 func torneoFecha(fecha string) (string, error) {
@@ -152,212 +155,143 @@ func torneoFecha(fecha string) (string, error) {
 		return "", fmt.Errorf("la fecha es obligatoria")
 	}
 
-	if valor, err := time.Parse("2006-01-02", fecha); err == nil {
-		return valor.Format(time.RFC3339), nil
+	formatos := []string{
+		time.RFC3339,
+		"2006-01-02",
+		"2006-01-02 15:04:05",
 	}
 
-	if valor, err := time.Parse(time.RFC3339, fecha); err == nil {
-		return valor.Format(time.RFC3339), nil
+	for _, formato := range formatos {
+		fechaParseada, err := time.Parse(formato, fecha)
+		if err == nil {
+			return fechaParseada.Format(time.RFC3339), nil
+		}
 	}
 
-	return "", fmt.Errorf("la fecha debe tener formato AAAA-MM-DD")
+	return "", fmt.Errorf("formato de fecha inválido: %s", fecha)
 }
 
 func (c *TorneoController) CrearTorneos() {
+	responder := func(status int, datos map[string]interface{}) {
+		c.Ctx.Output.SetStatus(status)
+		c.Data["json"] = datos
+		c.ServeJSON()
+	}
+
 	var torneo TorneoEntrada
 
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &torneo); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
-			"Mensaje": "El JSON enviado no es válido",
-		}
-		c.ServeJSON()
+			"Mensaje": "El cuerpo JSON del torneo no es válido",
+			"detalle": err.Error(),
+		})
 		return
 	}
 
-	if strings.TrimSpace(torneo.NombreTorneo) == "" {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+	torneo.NombreTorneo = strings.TrimSpace(torneo.NombreTorneo)
+	torneo.Ubicacion = strings.TrimSpace(torneo.Ubicacion)
+	torneo.Objetivo = strings.TrimSpace(torneo.Objetivo)
+
+	if torneo.NombreTorneo == "" {
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
 			"Mensaje": "El nombre del torneo es obligatorio",
-		}
-		c.ServeJSON()
+		})
 		return
 	}
 
-	if strings.TrimSpace(torneo.Objetivo) == "" {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+	if torneo.IdTipoDeporte < 1 {
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
-			"Mensaje": "El objetivo es obligatorio",
-		}
-		c.ServeJSON()
+			"Mensaje": "El tipo de deporte es obligatorio",
+		})
 		return
 	}
 
-	ubicacion := strings.TrimSpace(torneo.Ubicacion)
-	if ubicacion == "" {
-		ubicacion = strings.TrimSpace(torneo.Lugar)
-	}
-
-	if ubicacion == "" {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+	if torneo.IdTipoDistribucion < 1 {
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
-			"Mensaje": "El lugar del torneo es obligatorio",
-		}
-		c.ServeJSON()
+			"Mensaje": "Debe seleccionar un tipo de distribución para el torneo",
+		})
 		return
 	}
 
-	cantidad := torneo.CantidadEquipo
-	if cantidad == 0 {
-		cantidad = torneo.CantidadEquipos
+	if torneo.Ubicacion == "" {
+		responder(http.StatusBadRequest, map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "La ubicación del torneo es obligatoria",
+		})
+		return
 	}
 
-	if cantidad < 1 {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+	if torneo.Objetivo == "" {
+		responder(http.StatusBadRequest, map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "El objetivo del torneo es obligatorio",
+		})
+		return
+	}
+
+	if torneo.CantidadEquipo < 1 {
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
 			"Mensaje": "La cantidad de equipos debe ser mayor que cero",
-		}
-		c.ServeJSON()
+		})
 		return
 	}
 
-	if torneo.TipoDeporte == nil || torneo.TipoDeporte.ID < 1 {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
-			"ok":      false,
-			"Mensaje": "Debe seleccionar un tipo de deporte válido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	distribucion := torneo.Distribucion
-	if distribucion == nil {
-		distribucion = torneo.Division
-	}
-
-	if distribucion == nil || distribucion.ID < 1 {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
-			"ok":      false,
-			"Mensaje": "Debe seleccionar una división para el torneo",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	if torneo.Imagen == nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
-			"ok":      false,
-			"Mensaje": "La imagen del torneo es obligatoria",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	urlImagen := strings.TrimSpace(torneo.Imagen.URLImagen)
-	if urlImagen == "" {
-		urlImagen = strings.TrimSpace(torneo.Imagen.ImagenUrl)
-	}
-
-	if urlImagen == "" {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+	if torneo.Imagen == nil || strings.TrimSpace(torneo.Imagen.UrlImagen) == "" {
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
 			"Mensaje": "La URL de la imagen no puede estar vacía",
-	jsonImagen, err := json.Marshal(solicitudImagen)
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]interface{}{"message": "Falta configurar url_imagenes"}
-		c.ServeJSON()
+		})
 		return
 	}
 
-	urlTorneos, err := web.AppConfig.String("url_torneos")
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]interface{}{"message": "Falta configurar url_torneos"}
-		c.ServeJSON()
-		return
-	}
-
-	urlPremiaciones, err := web.AppConfig.String("url_premiaciones")
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]interface{}{"message": "Falta configurar url_premiaciones"}
-		c.ServeJSON()
-		return
-	}
-
-
-	// Crear la imagen inicialmente sin relacionarla con el torneo.
-	datosImagen := map[string]interface{}{
-		"UrlImagen":  strings.TrimSpace(torneo.Imagen.URLImagen),
-		"TipoImagen": torneo.Imagen.TipoImagen,
-		"Activo":     true,
-	}
-
-	respuestaImagen, estado, err := enviarSolicitud(http.MethodPost, urlImagenes, datosImagen)
-	if err != nil || estado < 200 || estado >= 300 {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "No se pudo crear la imagen en el CRUD",
-			"detalle": string(respuestaImagen),
-		c.Data["json"] = map[string]string{
-			"error": "No fue posible convertir el JSON de imagen",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	if len(torneo.Premiaciones) == 0 {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+	if len(torneo.Premiaciones) < 1 {
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
-			"Mensaje": "Debe registrar al menos una premiación",
-		}
-		c.ServeJSON()
+			"Mensaje": "La premiación tiene que tener mínimo una premiación",
+		})
 		return
 	}
 
 	for i, premiacion := range torneo.Premiaciones {
-		if strings.TrimSpace(premiacion.Puesto) == "" || premiacion.Premio < 0 {
-			c.Ctx.Output.SetStatus(http.StatusBadRequest)
-			c.Data["json"] = map[string]interface{}{
+		if strings.TrimSpace(premiacion.Descripcion) == "" {
+			responder(http.StatusBadRequest, map[string]interface{}{
 				"ok":      false,
-				"Mensaje": fmt.Sprintf("La premiación %d tiene datos no válidos", i+1),
-			}
-			c.ServeJSON()
+				"Mensaje": fmt.Sprintf("La descripción de la premiación %d es obligatoria", i+1),
+			})
+			return
+		}
+
+		if premiacion.CantidadPremiacion < 1 {
+			responder(http.StatusBadRequest, map[string]interface{}{
+				"ok":      false,
+				"Mensaje": fmt.Sprintf("La cantidad de la premiación %d no puede ser negativa", i+1),
+			})
 			return
 		}
 	}
 
 	fechaInicio, err := torneoFecha(torneo.FechaInicio)
 	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
 			"Mensaje": "La fecha de inicio no es válida",
-		}
-		c.ServeJSON()
+			"detalle": err.Error(),
+		})
 		return
 	}
 
 	fechaFin, err := torneoFecha(torneo.FechaFin)
 	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
 			"Mensaje": "La fecha de finalización no es válida",
-		}
-		c.ServeJSON()
+			"detalle": err.Error(),
+		})
 		return
 	}
 
@@ -365,197 +299,254 @@ func (c *TorneoController) CrearTorneos() {
 	fin, _ := time.Parse(time.RFC3339, fechaFin)
 
 	if fin.Before(inicio) {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]interface{}{
+		responder(http.StatusBadRequest, map[string]interface{}{
 			"ok":      false,
 			"Mensaje": "La fecha de finalización no puede ser anterior a la fecha de inicio",
-		}
-		c.ServeJSON()
+		})
 		return
 	}
 
-	urlImagenes, errImagen := web.AppConfig.String("url_imagenes")
-	urlTorneos, errTorneo := web.AppConfig.String("url_torneos")
-	urlPremiaciones, errPremiacion := web.AppConfig.String("url_premiaciones")
+const distribucionGrupos = 1
 
-	if errImagen != nil || errTorneo != nil || errPremiacion != nil ||
-		strings.TrimSpace(urlImagenes) == "" ||
-		strings.TrimSpace(urlTorneos) == "" ||
-		strings.TrimSpace(urlPremiaciones) == "" {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]interface{}{
+if torneo.IdTipoDistribucion == distribucionGrupos {
+    if torneo.CantidadGrupos < 1 {
+        c.Ctx.Output.SetStatus(http.StatusBadRequest)
+        c.Data["json"] = map[string]interface{}{
+            "ok":      false,
+            "Mensaje": "La cantidad de grupos debe ser mayor que cero",
+        }
+        c.ServeJSON()
+        return
+    }
+
+const distribucionGrupos = 3
+
+
+if torneo.IdTipoDistribucion == distribucionGrupos {
+    if torneo.CantidadGrupos <= 2 {
+        c.Ctx.Output.SetStatus(http.StatusBadRequest)
+        c.Data["json"] = map[string]interface{}{
+            "ok":      false,
+            "Mensaje": "La cantidad de grupos debe ser mayor a 2",
+        }
+        c.ServeJSON()
+        return
+    }
+
+    if torneo.CantidadGrupos > torneo.CantidadEquipo {
+        c.Ctx.Output.SetStatus(http.StatusBadRequest)
+        c.Data["json"] = map[string]interface{}{
+            "ok":      false,
+            "Mensaje": "La cantidad de grupos no puede superar la cantidad de equipos",
+        }
+        c.ServeJSON()
+        return
+    }
+}
+}
+
+	urlImagenes, err := web.AppConfig.String("url_imagenes")
+	if err != nil || strings.TrimSpace(urlImagenes) == "" {
+		responder(http.StatusInternalServerError, map[string]interface{}{
 			"ok":      false,
-			"Mensaje": "Falta configurar url_imagenes, url_torneos o url_premiaciones en app.conf",
-		}
-		c.ServeJSON()
+			"Mensaje": "No está configurada la URL del CRUD de imágenes",
+		})
 		return
 	}
 
+	urlTorneos, err := web.AppConfig.String("url_torneos")
+	if err != nil || strings.TrimSpace(urlTorneos) == "" {
+		responder(http.StatusInternalServerError, map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "No está configurada la URL del CRUD de torneos",
+		})
+		return
+	}
 
+	urlPremiaciones, err := web.AppConfig.String("url_premiaciones")
+	if err != nil || strings.TrimSpace(urlPremiaciones) == "" {
+		responder(http.StatusInternalServerError, map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "No está configurada la URL del CRUD de premiaciones",
+		})
+		return
+	}
+
+	urlImagen := strings.TrimRight(strings.TrimSpace(urlImagenes), "/")
+	urlTorneo := strings.TrimRight(strings.TrimSpace(urlTorneos), "/")
+	urlPremiacion := strings.TrimRight(strings.TrimSpace(urlPremiaciones), "/")
 
 	tipoImagen := strings.TrimSpace(torneo.Imagen.TipoImagen)
 	if tipoImagen == "" {
-		tipoImagen = "afiche"
+		tipoImagen = "flyer"
 	}
 
+	// 1. Crear la imagen.
 	datosImagen := map[string]interface{}{
-		"UrlImagen":  urlImagen,
+		"UrlImagen":  strings.TrimSpace(torneo.Imagen.UrlImagen),
 		"TipoImagen": tipoImagen,
 		"Activo":     true,
 	}
 
-	respuesta, estado, err := torneoSolicitud(
+	respuestaImagen, statusImagen, err := torneoSolicitud(
 		http.MethodPost,
-		urlImagenes,
+		urlImagen,
 		datosImagen,
 	)
 
-	if err != nil || estado < 200 || estado >= 300 {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
-			"ok":      false,
-			"Mensaje": "No se pudo crear la imagen en el CRUD",
-			"detalle": string(respuesta),
+	if err != nil || statusImagen < 200 || statusImagen >= 300 {
+		detalle := string(respuestaImagen)
+		if err != nil {
+			detalle = err.Error()
 		}
-		c.ServeJSON()
+
+		responder(http.StatusBadGateway, map[string]interface{}{
+			"ok":      false,
+			"Mensaje": "Falló la creación de la imagen en el CRUD",
+			"detalle": detalle,
+		})
 		return
 	}
 
-	idImagen, err := torneoObtenerID(respuesta)
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
+	idImagen := torneoObtenerID(respuestaImagen)
+	if idImagen < 1 {
+		responder(http.StatusBadGateway, map[string]interface{}{
 			"ok":      false,
-			"Mensaje": "La imagen se creó, pero no se pudo obtener su identificador",
-			"detalle": string(respuesta),
-		}
-		c.ServeJSON()
+			"Mensaje": "La imagen se creó, pero no se pudo obtener su ID",
+			"detalle": string(respuestaImagen),
+		})
 		return
 	}
 
-
+	// 2. Crear el torneo con los IDs de las relaciones.
 	datosTorneo := map[string]interface{}{
-		"IdTipoDeporte": map[string]interface{}{
-			"Id": torneo.TipoDeporte.ID,
-		},
-		"NombreTorneo": strings.TrimSpace(torneo.NombreTorneo),
-		"FechaInicio":  fechaInicio,
-		"FechaFin":     fechaFin,
-		"Ubicacion":    ubicacion,
-		"Objetivo":     strings.TrimSpace(torneo.Objetivo),
-		"IdImagen": map[string]interface{}{
+		"IdTipoDeporte":      torneo.IdTipoDeporte,
+		"NombreTorneo":       torneo.NombreTorneo,
+		"FechaInicio":        fechaInicio,
+		"FechaFin":           fechaFin,
+		"Ubicacion":          torneo.Ubicacion,
+		"Objetivo":           torneo.Objetivo,
+		"IdImagen": map[string]interface{}{	
 			"Id": idImagen,
-		},
-		"CantidadEquipo": cantidad,
-		"IdTipoDistribucion": map[string]interface{}{
-			"Id": distribucion.ID,
-		},
-		"Activo": true,
+		},		
+		"CantidadEquipo":     torneo.CantidadEquipo,
+		"IdTipoDistribucion": torneo.IdTipoDistribucion,
+		"Activo":             true,
 	}
 
-	respuesta, estado, err = torneoSolicitud(
+	if strings.TrimSpace(torneo.FechaFase) != "" {
+		fechaFase, err := torneoFecha(torneo.FechaFase)
+		if err != nil {
+			responder(http.StatusBadRequest, map[string]interface{}{
+				"ok":      false,
+				"Mensaje": "La fecha de fase no es válida",
+				"detalle": err.Error(),
+			})
+			return
+		}
+		datosTorneo["FechaFase"] = fechaFase
+	}
+
+	respuestaTorneo, statusTorneo, err := torneoSolicitud(
 		http.MethodPost,
-		urlTorneos,
+		urlTorneo,
 		datosTorneo,
 	)
 
-	if err != nil || estado < 200 || estado >= 300 {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
-			"ok":       false,
-			"Mensaje":  "No se pudo crear el torneo en el CRUD",
-			"id_imagen": idImagen,
-			"detalle":  string(respuesta),
+	if err != nil || statusTorneo < 200 || statusTorneo >= 300 {
+		detalle := string(respuestaTorneo)
+		if err != nil {
+			detalle = err.Error()
 		}
-		c.ServeJSON()
-		return
-	}
 
-	idTorneo, err := torneoObtenerID(respuesta)
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
-			"ok":       false,
-			"Mensaje":  "El torneo se creó, pero no se pudo obtener su identificador",
-			"id_imagen": idImagen,
-			"detalle":  string(respuesta),
-		}
-		c.ServeJSON()
-		return
-	}
-
-	datosImagenActualizados := map[string]interface{}{
-		"IdTorneo": map[string]interface{}{
-			"Id": idTorneo,
-		},
-		"UrlImagen":  urlImagen,
-		"TipoImagen": tipoImagen,
-		"Activo":     true,
-	}
-
-	respuesta, estado, err = torneoSolicitud(
-		http.MethodPut,
-		fmt.Sprintf("%s/%d", strings.TrimRight(urlImagenes, "/"), idImagen),
-		datosImagenActualizados,
-	)
-
-	if err != nil || estado < 200 || estado >= 300 {
-		c.Ctx.Output.SetStatus(http.StatusBadGateway)
-		c.Data["json"] = map[string]interface{}{
+		responder(http.StatusBadGateway, map[string]interface{}{
 			"ok":        false,
-			"Mensaje":   "El torneo se creó, pero no se pudo relacionar la imagen",
-			"id_torneo": idTorneo,
+			"Mensaje":   "La imagen se creó, pero falló la creación del torneo",
 			"id_imagen": idImagen,
-			"detalle":   string(respuesta),
-		}
-		c.ServeJSON()
+			"detalle":   detalle,
+		})
 		return
 	}
-	var errores []string
+
+	idTorneo := torneoObtenerID(respuestaTorneo)
+	if idTorneo < 1 {
+		responder(http.StatusBadGateway, map[string]interface{}{
+			"ok":        false,
+			"Mensaje":   "El torneo se creó, pero no se pudo obtener su ID",
+			"id_imagen": idImagen,
+			"detalle":   string(respuestaTorneo),
+		})
+		return
+	}
+
+	// 4. Crear las premiaciones asociadas al torneo.
+	var idsPremiaciones []int
+	var erroresPremiaciones []map[string]interface{}
 
 	for i, premiacion := range torneo.Premiaciones {
 		datosPremiacion := map[string]interface{}{
 			"IdTorneo": map[string]interface{}{
 				"Id": idTorneo,
 			},
-			"CantidadPremiacion": premiacion.Premio,
-			"Descripcion":        strings.TrimSpace(premiacion.Puesto),
+			"CantidadPremiacion": premiacion.CantidadPremiacion,
+			"Descripcion":        strings.TrimSpace(premiacion.Descripcion),
 			"Activo":             true,
 		}
 
-		respuesta, estado, err = torneoSolicitud(
+		respuestaPremiacion, statusPremiacion, err := torneoSolicitud(
 			http.MethodPost,
-			urlPremiaciones,
+			urlPremiacion,
 			datosPremiacion,
 		)
 
-		if err != nil || estado < 200 || estado >= 300 {
-			errores = append(
-				errores,
-				fmt.Sprintf("No se pudo guardar la premiación %d: %s", i+1, string(respuesta)),
-			)
+		if err != nil || statusPremiacion < 200 || statusPremiacion >= 300 {
+			detalle := string(respuestaPremiacion)
+			if err != nil {
+				detalle = err.Error()
+			}
+
+			erroresPremiaciones = append(erroresPremiaciones, map[string]interface{}{
+				"premiacion": i + 1,
+				"descripcion": premiacion.Descripcion,
+				"detalle":    detalle,
+			})
+			continue
+		}
+
+		if idPremiacion := torneoObtenerID(respuestaPremiacion); idPremiacion > 0 {
+			idsPremiaciones = append(idsPremiaciones, idPremiacion)
 		}
 	}
 
-	if len(errores) > 0 {
-		c.Ctx.Output.SetStatus(http.StatusMultiStatus)
-		c.Data["json"] = map[string]interface{}{
-			"ok":        false,
-			"Mensaje":   "El torneo se creó, pero algunas premiaciones fallaron",
-			"id_torneo": idTorneo,
-			"id_imagen": idImagen,
-			"errores":   errores,
-		}
-		c.ServeJSON()
+		// 5. Devolver todos los datos creados.
+	if len(erroresPremiaciones) > 0 {
+		responder(http.StatusMultiStatus, map[string]interface{}{
+			"ok":                   false,
+			"Mensaje":              "El torneo y la imagen se crearon, pero algunas premiaciones fallaron",
+			"torneo":               json.RawMessage(respuestaTorneo),
+			"imagen":               json.RawMessage(respuestaImagen),
+			"ids_premiaciones":     idsPremiaciones,
+			"errores_premiaciones": erroresPremiaciones,
+		})
 		return
 	}
 
-	c.Ctx.Output.SetStatus(http.StatusCreated)
-	c.Data["json"] = map[string]interface{}{
-		"ok":        true,
-		"Mensaje":   "Torneo, imagen y premiaciones creados correctamente",
-		"id_torneo": idTorneo,
-		"id_imagen": idImagen,
+	var datosTorneoCompleto interface{}
+	var datosImagenCompleta interface{}
+
+	if err := json.Unmarshal(respuestaTorneo, &datosTorneoCompleto); err != nil {
+		datosTorneoCompleto = string(respuestaTorneo)
 	}
-	c.ServeJSON()
+
+	if err := json.Unmarshal(respuestaImagen, &datosImagenCompleta); err != nil {
+		datosImagenCompleta = string(respuestaImagen)
+	}
+
+	responder(http.StatusCreated, map[string]interface{}{
+		"ok":      true,
+		"Mensaje": "Torneo, imagen y premiaciones creados correctamente",
+		"torneo":  datosTorneoCompleto,
+		"imagen":  datosImagenCompleta,
+		"premiaciones": idsPremiaciones,
+	})
 }
