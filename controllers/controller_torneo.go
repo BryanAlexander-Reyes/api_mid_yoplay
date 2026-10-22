@@ -41,6 +41,15 @@ type ImagenEntrada struct {
 	Activo     bool   `json:"Activo"`
 }
 
+type RespuestaTipoDistribucion struct {
+    Success bool `json:"success"`
+    Status  int  `json:"status"`
+    Data    struct {
+        Id       int    `json:"Id"`
+        Divicion string `json:"Divicion"`
+    } `json:"Data"`
+}
+
 type PremiacionEntrada struct {
 	IdTorneo           int    `json:"IdTorneo"`
 	CantidadPremiacion int    `json:"CantidadPremiacion"`
@@ -305,44 +314,76 @@ func (c *TorneoController) CrearTorneos() {
 		})
 		return
 	}
+	urlTiposDistribucion, err := web.AppConfig.String("url_tipos_distribucion")
+if err != nil || strings.TrimSpace(urlTiposDistribucion) == "" {
+    responder(http.StatusInternalServerError, map[string]interface{}{
+        "ok":      false,
+        "Mensaje": "No está configurada la URL del CRUD de tipos de distribución",
+    })
+    return
+}
 
-const distribucionGrupos = 1
+urlTipoDistribucion := strings.TrimRight(
+    strings.TrimSpace(urlTiposDistribucion), "/",
+) + "/" + strconv.Itoa(torneo.IdTipoDistribucion)
 
-if torneo.IdTipoDistribucion == distribucionGrupos {
-    if torneo.CantidadGrupos < 1 {
-        c.Ctx.Output.SetStatus(http.StatusBadRequest)
-        c.Data["json"] = map[string]interface{}{
-            "ok":      false,
-            "Mensaje": "La cantidad de grupos debe ser mayor que cero",
-        }
-        c.ServeJSON()
-        return
+respuestaDistribucion, statusDistribucion, err := torneoSolicitud(
+    http.MethodGet,
+    urlTipoDistribucion,
+    nil,
+)
+
+if err != nil || statusDistribucion < 200 || statusDistribucion >= 300 {
+    detalle := string(respuestaDistribucion)
+    if err != nil {
+        detalle = err.Error()
     }
 
-const distribucionGrupos = 3
+    responder(http.StatusBadGateway, map[string]interface{}{
+        "ok":      false,
+        "Mensaje": "No se pudo consultar el tipo de distribución en el CRUD",
+        "detalle": detalle,
+    })
+    return
+}
 
+var distribucion RespuestaTipoDistribucion
 
-if torneo.IdTipoDistribucion == distribucionGrupos {
+if err := json.Unmarshal(respuestaDistribucion, &distribucion); err != nil {
+    responder(http.StatusBadGateway, map[string]interface{}{
+        "ok":      false,
+        "Mensaje": "La respuesta del tipo de distribución no es válida",
+        "detalle": err.Error(),
+    })
+    return
+}
+
+if !distribucion.Success || distribucion.Data.Id != torneo.IdTipoDistribucion {
+    responder(http.StatusBadRequest, map[string]interface{}{
+        "ok":      false,
+        "Mensaje": "El tipo de distribución seleccionado no existe o no es válido",
+    })
+    return
+}
+
+if strings.EqualFold(
+    strings.TrimSpace(distribucion.Data.Divicion), "grupos",
+) {
     if torneo.CantidadGrupos <= 2 {
-        c.Ctx.Output.SetStatus(http.StatusBadRequest)
-        c.Data["json"] = map[string]interface{}{
+        responder(http.StatusBadRequest, map[string]interface{}{
             "ok":      false,
             "Mensaje": "La cantidad de grupos debe ser mayor a 2",
-        }
-        c.ServeJSON()
+        })
         return
     }
 
     if torneo.CantidadGrupos > torneo.CantidadEquipo {
-        c.Ctx.Output.SetStatus(http.StatusBadRequest)
-        c.Data["json"] = map[string]interface{}{
+        responder(http.StatusBadRequest, map[string]interface{}{
             "ok":      false,
             "Mensaje": "La cantidad de grupos no puede superar la cantidad de equipos",
-        }
-        c.ServeJSON()
+        })
         return
     }
-}
 }
 
 	urlImagenes, err := web.AppConfig.String("url_imagenes")
@@ -394,6 +435,8 @@ if torneo.IdTipoDistribucion == distribucionGrupos {
 		datosImagen,
 	)
 
+	
+
 	if err != nil || statusImagen < 200 || statusImagen >= 300 {
 		detalle := string(respuestaImagen)
 		if err != nil {
@@ -419,20 +462,21 @@ if torneo.IdTipoDistribucion == distribucionGrupos {
 	}
 
 	// 2. Crear el torneo con los IDs de las relaciones.
-	datosTorneo := map[string]interface{}{
-		"IdTipoDeporte":      torneo.IdTipoDeporte,
-		"NombreTorneo":       torneo.NombreTorneo,
-		"FechaInicio":        fechaInicio,
-		"FechaFin":           fechaFin,
-		"Ubicacion":          torneo.Ubicacion,
-		"Objetivo":           torneo.Objetivo,
-		"IdImagen": map[string]interface{}{	
-			"Id": idImagen,
-		},		
-		"CantidadEquipo":     torneo.CantidadEquipo,
-		"IdTipoDistribucion": torneo.IdTipoDistribucion,
-		"Activo":             true,
-	}
+datosTorneo := map[string]interface{}{
+    "IdTipoDeporte":      torneo.IdTipoDeporte,
+    "NombreTorneo":       torneo.NombreTorneo,
+    "FechaInicio":        fechaInicio,
+    "FechaFin":           fechaFin,
+    "Ubicacion":          torneo.Ubicacion,
+    "Objetivo":            torneo.Objetivo,
+    "IdImagen": map[string]interface{}{
+        "Id": idImagen,
+    },
+    "CantidadEquipo":      torneo.CantidadEquipo,
+    "IdTipoDistribucion":  torneo.IdTipoDistribucion,
+    "CantidadGrupos":      torneo.CantidadGrupos,
+    "Activo":              true,
+}
 
 	if strings.TrimSpace(torneo.FechaFase) != "" {
 		fechaFase, err := torneoFecha(torneo.FechaFase)
