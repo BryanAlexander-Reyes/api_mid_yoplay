@@ -3,6 +3,7 @@ package controllers
 import (
 	"api_mid_yoplay/helper"
 	"encoding/json"
+	"golang.org/x/crypto/bcrypt"
 	
 	"net/http"
 
@@ -107,6 +108,41 @@ func (c *MidRecuperarContrasenaController) CambiarContrasena() {
 		c.ServeJSON()
 		return
 	}
+
+	hashActual ,err := helper.ObtenerHashContrasena(idContrasena)
+	if err!=nil{
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"]=map[string]string{
+			"mensaje":"No fue posible consultar la contraseña actual",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// para comprobar si la nueva contraseña es igual a la anterior
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(hashActual),
+		[]byte(request.ContrasenaNueva),
+	)
+
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]string{
+			"mensaje": "la contraseña nueva no puede ser igual a la anterior",
+			
+		}
+		c.ServeJSON()
+		return
+	}
+	if err!= bcrypt.ErrMismatchedHashAndPassword {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]string{
+			"mensaje": "No fue posible verificar la contraseña actual",
+		}
+		c.ServeJSON()
+		return
+	}
+
 	hashTexto, err := helper.GenerarHashContrasena(request.ContrasenaNueva)
 	if err != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)

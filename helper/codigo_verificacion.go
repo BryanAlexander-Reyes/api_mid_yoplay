@@ -82,7 +82,7 @@ func VerificarCodigo(correo, codigo, proposito string)bool{
 		return false
 	}
 
-	if codigoGuardado.Codigo == codigo{
+	if codigoGuardado.Codigo != codigo{
 		return false
 	}
 	delete(codigosTemporales, clave)
