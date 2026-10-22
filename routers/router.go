@@ -13,6 +13,7 @@ func init() {
     beego.Router("/", &controllers.MainController{})
 	beego.Router("api/v1/encuentro/:id", &controllers.Encuentro_midController{}, "get:GetOne")
 	beego.Router("api/v1/encuentro", &controllers.Encuentro_midController{}, "get:GetAll")
+	beego.Router("api/v1/torneo/:id",&controllers.TorneoController{}, "get:CrearTorneos")
 	beego.Router("api/v1/info-torneo/", &controllers.Info_torneo_midController{}, "get:GetAll")
 	beego.Router("api/v1/info-torneo/:id", &controllers.Info_torneo_midController{}, "get:GetOne")
 	beego.Router("/api/creacion-usuario",&controllers.RegistroController{}, "post:CrearUsuario")
@@ -21,4 +22,7 @@ func init() {
 	beego.Router("/api/torneo", &controllers.TorneoController{}, "post:CrearTorneos")
 	beego.Router("/api/reglamento",&controllers.ReglamentoMIDController{},"post:CrearReglamento",)	
 	beego.Router("/api/equipo/registro",&controllers.EquipoMIDController{},"post:Post",) 
+	beego.Router("/api/recuperarcontrasena",&controllers.MidRecuperarContrasenaController{}, "post:RecuperarContrasena")
+	beego.Router("/api/cambiarcontrasena",&controllers.MidRecuperarContrasenaController{}, "put:CambiarContrasena")
+	beego.Router("/api/v1/usuario/:id", &controllers.Info_usuario_midController{}, "get:GetOne")
 }
