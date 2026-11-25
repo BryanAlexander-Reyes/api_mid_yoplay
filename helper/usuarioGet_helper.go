@@ -20,9 +20,9 @@ type responseUsuario struct {
 }
 
 type IdUsuario struct {
-	ID    int    `json:"Id"`
-	Email string `json:"Email"`
-	Nombre string `json:"nombre"`
+	ID       int    `json:"Id"`
+	Email    string `json:"Email"`
+	Nombre   string `json:"nombre"`
 	Apellido string `json:"apellido"`
 }
 type responseContrasena struct {
@@ -30,11 +30,11 @@ type responseContrasena struct {
 }
 
 type IdContrasena struct {
-	ID int `json:"Id"`
+	ID             int    `json:"Id"`
 	HashContrasena string `json:"HashContrasena"`
 }
 
-type responseContrasenaID struct{
+type responseContrasenaID struct {
 	Data *IdContrasena `json:"Data"`
 }
 
@@ -160,18 +160,18 @@ func ObtenerIdContrasena(IdUSUARIO int) (int, error) {
 	return resultado.Data[0].ID, nil
 }
 
-func ObtenerHashContrasena(IdContrasena int)(string, error){
+func ObtenerHashContrasena(IdContrasena int) (string, error) {
 	urlContrasena, _ := beego.AppConfig.String("url_contrasena")
-	urlConsulta := urlContrasena +"/"+strconv.Itoa(IdContrasena)
+	urlConsulta := urlContrasena + "/" + strconv.Itoa(IdContrasena)
 
-	peticion, err:=http.NewRequest(http.MethodGet,urlConsulta,nil)
-	if err!=nil{
+	peticion, err := http.NewRequest(http.MethodGet, urlConsulta, nil)
+	if err != nil {
 		return "", err
 	}
 
 	cliente := &http.Client{}
-	respuesta, err:= cliente.Do(peticion)
-	if err!=nil{
+	respuesta, err := cliente.Do(peticion)
+	if err != nil {
 		return "", err
 	}
 	defer respuesta.Body.Close()
@@ -190,10 +190,9 @@ func ObtenerHashContrasena(IdContrasena int)(string, error){
 	if err != nil {
 		return "", fmt.Errorf("no se pudo convertir la peticion ")
 	}
-	if resultado.Data.HashContrasena==""{
+	if resultado.Data.HashContrasena == "" {
 		return "", errors.New("no se encontro el hash de la contraseña")
 	}
-
 
 	return resultado.Data.HashContrasena, nil
 }
@@ -212,7 +211,7 @@ func GenerarHashContrasena(contrasena string) (string, error) {
 func ActualizarContrasena(IdContrasena int, hashTexto string) error {
 	urlContrasena, err := beego.AppConfig.String("url_contrasena")
 	if err != nil {
-		return fmt.Errorf("no se podo obtener la url de contraseñas", err)
+		return fmt.Errorf("no se podo obtener la url de contraseñas %w", err)
 	}
 
 	datos := map[string]interface{}{
@@ -222,7 +221,8 @@ func ActualizarContrasena(IdContrasena int, hashTexto string) error {
 	if err != nil {
 		return fmt.Errorf("no se podo crear el json: %w", err)
 	}
-	fmt.Println("JSON enviado al CRUD:", string(cuerpoJSON))
+	fmt.Println("ID contraseña:", IdContrasena)
+	fmt.Println("Longitud del nuevo hash:", len(hashTexto))
 	urlActualizacion := urlContrasena + "/" + strconv.Itoa(IdContrasena)
 
 	peticion, err := http.NewRequest(http.MethodPut, urlActualizacion, bytes.NewBuffer(cuerpoJSON))

@@ -3,8 +3,10 @@ package controllers
 import (
 	"api_mid_yoplay/helper"
 	"encoding/json"
+	"fmt"
+
 	"golang.org/x/crypto/bcrypt"
-	
+
 	"net/http"
 
 	beego "github.com/beego/beego/v2/server/web"
@@ -109,11 +111,14 @@ func (c *MidRecuperarContrasenaController) CambiarContrasena() {
 		return
 	}
 
-	hashActual ,err := helper.ObtenerHashContrasena(idContrasena)
-	if err!=nil{
+	hashActual, err := helper.ObtenerHashContrasena(idContrasena)
+	fmt.Println("lgin hash",len(hashActual))
+	fmt.Println("obtener hash", err)
+	if err != nil {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"]=map[string]string{
-			"mensaje":"No fue posible consultar la contraseña actual",
+		c.Data["json"] = map[string]string{
+			"mensaje": "No fue posible consultar la contraseña actual",
+			"error":   err.Error(),
 		}
 		c.ServeJSON()
 		return
@@ -125,19 +130,19 @@ func (c *MidRecuperarContrasenaController) CambiarContrasena() {
 		[]byte(request.ContrasenaNueva),
 	)
 
-	if err != nil {
+	if err == nil {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"] = map[string]string{
 			"mensaje": "la contraseña nueva no puede ser igual a la anterior",
-			
 		}
 		c.ServeJSON()
 		return
 	}
-	if err!= bcrypt.ErrMismatchedHashAndPassword {
+	if err != bcrypt.ErrMismatchedHashAndPassword && err != bcrypt.ErrHashTooShort {
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]string{
 			"mensaje": "No fue posible verificar la contraseña actual",
+			"error":   err.Error(),
 		}
 		c.ServeJSON()
 		return
@@ -167,7 +172,7 @@ func (c *MidRecuperarContrasenaController) CambiarContrasena() {
 	c.Ctx.Output.SetStatus(http.StatusOK)
 	c.Data["json"] = map[string]string{
 		"mensaje": "la contraseña se actualizó correctamente",
-		"hash":hashTexto,
+		"hash":    hashTexto,
 	}
 	c.ServeJSON()
 }
