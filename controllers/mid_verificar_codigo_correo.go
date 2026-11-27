@@ -58,7 +58,7 @@ func (c* VerificarCodigoCorreo) VerificarCodigo(){
 	if request.Proposito!="registro"&& request.Proposito!="recuperacion"{
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
 		c.Data["json"]=map[string]string{
-			"mensaje":"El proposito no es valido",
+			"Mensaje":"El proposito no es valido",
 		}
 		c.ServeJSON()
 		return
@@ -73,7 +73,7 @@ func (c* VerificarCodigoCorreo) VerificarCodigo(){
 
 	if valido {
     respuesta := map[string]string{
-        "mensaje": "El codigo de verificacion es valido",
+        "Mensaje": "El codigo de verificacion es valido",
     }
 
     if request.Proposito == "recuperacion" {
@@ -81,7 +81,7 @@ func (c* VerificarCodigoCorreo) VerificarCodigo(){
         if err != nil {
             c.Ctx.Output.SetStatus(http.StatusInternalServerError)
             c.Data["json"] = map[string]string{
-                "mensaje": "Error al obtener usuario",
+                "Mensaje": "Error al obtener usuario",
             }
             c.ServeJSON()
             return
@@ -91,7 +91,7 @@ func (c* VerificarCodigoCorreo) VerificarCodigo(){
         if err != nil {
             c.Ctx.Output.SetStatus(http.StatusInternalServerError)
             c.Data["json"] = map[string]string{
-                "mensaje": "No fue posible generar token de recuperacion",
+                "Mensaje": "No fue posible generar token de recuperacion",
             }
             c.ServeJSON()
             return
@@ -108,8 +108,8 @@ func (c* VerificarCodigoCorreo) VerificarCodigo(){
 
 	c.Ctx.Output.SetStatus(http.StatusBadRequest)
 	c.Data["json"] = map[string]string{
- 	   "mensaje": "El codigo de verificacion es invalido",
+ 	   "Mensaje": "El codigo de verificacion es invalido",
 	}
 	c.ServeJSON()
-	return
+	return;
 }
